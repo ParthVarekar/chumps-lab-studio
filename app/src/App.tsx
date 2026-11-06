@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { find, oneOfEach, spanOf } from '../shared/ops';
+import { camId, find, moodId, oneOfEach, spanOf } from '../shared/ops';
 import { useStudio } from './store';
 import { Assistant } from './ui/Assistant';
 import { Inspector } from './ui/Inspector';
@@ -11,6 +11,9 @@ import { TimelinePanel } from './ui/Timeline';
 import { TopBar } from './ui/TopBar';
 
 /** Keyboard shortcuts: the same commands as the buttons, so the AI and the keyboard share one path. */
+/** Ctrl+C remembers the selected items (one per group); Ctrl+V pastes them so the earliest lands on the playhead, keeping their spacing. */
+let clipboard: string[] = [];
+
 function useShortcuts() {
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
@@ -44,7 +47,33 @@ function useShortcuts() {
 			const total = st.edd.beats[st.edd.beats.length - 1].end;
 			const sel = st.selection.filter((id) => find(st.edd!, id));
 			const go = (t: number) => st.seekTo(Math.max(0, Math.min(total, t)));
+			const mod = e.ctrlKey || e.metaKey;
 			if (e.key === ' ') { e.preventDefault(); document.querySelector<HTMLButtonElement>('.transport .round')?.click(); }
+			else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && sel.length) {
+				// Nudge the selection by a frame (a second with Shift); a grouped item moves its whole group.
+				e.preventDefault();
+				const d = (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 1 / fps);
+				const lead = oneOfEach(st.edd, sel).map((id) => ({ id, sp: spanOf(st.edd!, id) })).filter((x) => x.sp);
+				void st.run(lead.map((x) => ({ op: 'set_time' as const, id: x.id, start: Math.max(0, x.sp!.start + d) })));
+			}
+			else if (mod && e.key.toLowerCase() === 'a') {
+				e.preventDefault();
+				const all: string[] = [];
+				for (const b of st.edd.beats) {
+					b.layers.forEach((l) => { if (!/^continues /.test(String(l.meta?.reason ?? ''))) all.push(l.id); });
+					b.camera.forEach((_, i) => all.push(camId(b, i)));
+					b.moods.forEach((_, i) => all.push(moodId(b, i)));
+				}
+				st.select(all);
+			}
+			else if (mod && e.key.toLowerCase() === 'c' && sel.length) { clipboard = oneOfEach(st.edd, sel); st.set({ status: `Copied ${clipboard.length} item${clipboard.length === 1 ? '' : 's'}. Ctrl+V pastes at the playhead` }); }
+			else if (mod && e.key.toLowerCase() === 'v' && clipboard.length) {
+				e.preventDefault();
+				const live = clipboard.map((id) => ({ id, sp: spanOf(st.edd!, id) })).filter((x) => x.sp);
+				if (!live.length) { st.set({ status: 'What you copied no longer exists' }); return; }
+				const first = Math.min(...live.map((x) => x.sp!.start));
+				void st.run(live.map((x) => ({ op: 'duplicate' as const, id: x.id, at: Math.max(0, st.time + (x.sp!.start - first)) })));
+			}
 			else if (e.key === 'ArrowLeft') { e.preventDefault(); go(st.time - (e.shiftKey ? 1 : 1 / fps)); }
 			else if (e.key === 'ArrowRight') { e.preventDefault(); go(st.time + (e.shiftKey ? 1 : 1 / fps)); }
 			else if (e.key === 'Home') go(0);

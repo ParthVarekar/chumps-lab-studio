@@ -272,6 +272,25 @@ const spotAfter = (await doc()).beats.flatMap((b: any) => b.layers.map((l: any) 
 ok('moving the zoom moves its spotlight by the same amount', spotAfter && Math.abs((spotAfter.b.start + spotAfter.l.enter.at) - (spotBefore.b.start + spotBefore.l.enter.at) - 5) < 0.1);
 await shot('8-grouped');
 
+// 9h. Keyboard: copy / paste at the playhead, nudge
+await page.evaluate((id) => { (document.activeElement as HTMLElement)?.blur(); (window as any).__studio.getState().select([id]); }, titleId);
+await sleep(300);
+const layersBefore = count(await doc()).layers;
+await page.keyboard.down('Control'); await page.keyboard.press('c'); await page.keyboard.up('Control');
+await page.evaluate(() => (window as any).__studio.getState().seekTo(100));
+await sleep(500);
+await page.keyboard.down('Control'); await page.keyboard.press('v'); await page.keyboard.up('Control');
+await sleep(1000);
+const dP = await doc();
+const pasted = dP.beats.flatMap((b: any) => b.layers.map((l: any) => ({ b, l }))).filter((x: any) => x.l.props.text === 'Hello editor' && Math.abs(x.b.start + x.l.enter.at - 100) < 0.2);
+ok('Ctrl+C then Ctrl+V pastes a copy at the playhead', count(dP).layers === layersBefore + 1 && pasted.length === 1);
+await page.evaluate((id) => (window as any).__studio.getState().select([id]), pasted[0].l.id);
+await sleep(300);
+await page.keyboard.down('Alt'); await page.keyboard.down('Shift'); await page.keyboard.press('ArrowRight'); await page.keyboard.up('Shift'); await page.keyboard.up('Alt');
+await sleep(900);
+const nudged = (await doc()).beats.flatMap((b: any) => b.layers.map((l: any) => ({ b, l }))).find((x: any) => x.l.id === pasted[0].l.id);
+ok('Alt+Shift+→ nudges the selection by one second', nudged && Math.abs(nudged.b.start + nudged.l.enter.at - 101) < 0.2);
+
 // 10. Another client (the AI via the API) changes the doc: the open editor updates live
 const rev0 = (await api('/api/open', { dir: DIR })).rev;
 const before2 = (await page.$$('.clip')).length;
