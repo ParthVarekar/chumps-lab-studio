@@ -3,7 +3,8 @@ import { Copy, ListX, Flag, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Sci
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { fmt, useStudio } from '../store';
-import { find, oneOfEach, rippleOps, spanOf } from '../../shared/ops';
+import type { Edd } from '@cls/engine/src/edd/schema';
+import { find, oneOfEach, rippleOps, spanOf, type Op } from '../../shared/ops';
 import { EFFECTS, buildRows } from './timelineModel';
 
 const Waveform: React.FC<{ peaks: number[]; duration: number }> = ({ peaks, duration }) => {
@@ -20,6 +21,19 @@ const Waveform: React.FC<{ peaks: number[]; duration: number }> = ({ peaks, dura
 			<path d={d} stroke="currentColor" strokeWidth="0.12" vectorEffect="non-scaling-stroke" fill="none" />
 			<title>{`narration, ${fmt(duration)}`}</title>
 		</svg>
+	);
+};
+
+/** A lane's name; clicking it switches every item in the lane off (or back on), like muting a track. */
+const LaneLabel: React.FC<{ row: { id: string; rowHeight?: number; actions: { id: string }[] }; kind?: string; label?: string; items: Record<string, { disabled?: boolean }>; edd: Edd | null; run: (ops: Op[]) => unknown }> = ({ row, kind, label, items, edd, run }) => {
+	const ids = row.actions.map((a) => a.id).filter((id) => items[id]);
+	const allOff = ids.length > 0 && ids.every((id) => items[id].disabled);
+	return (
+		<div className={`tl-label k-${kind}${allOff ? ' muted' : ''}${ids.length ? ' mutable' : ''}`} style={{ height: row.rowHeight ?? 30 }}
+			title={ids.length ? (allOff ? 'Lane is off: click to switch it back on' : 'Click to switch this whole lane off (mute / hide)') : undefined}
+			onClick={() => { if (edd && ids.length) void run(oneOfEach(edd, ids).map((id) => ({ op: 'set_enabled' as const, id, enabled: allOff }))); }}>
+			{label}
+		</div>
 	);
 };
 
@@ -85,7 +99,7 @@ export const TimelinePanel: React.FC = () => {
 				<div className="tl-labels" style={{ transform: `translateY(${-scrollTop}px)` }}>
 					<div className="tl-ruler-gap" />
 					{rows.map((r) => (
-						<div key={r.id} className={`tl-label k-${rowMeta[r.id]?.kind}`} style={{ height: r.rowHeight ?? 30 }}>{rowMeta[r.id]?.label}</div>
+						<LaneLabel key={r.id} row={r} kind={rowMeta[r.id]?.kind} label={rowMeta[r.id]?.label} items={items} edd={real} run={run} />
 					))}
 				</div>
 				<div className="tl-main">

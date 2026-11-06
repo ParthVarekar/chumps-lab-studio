@@ -317,6 +317,15 @@ await page.keyboard.down('Shift'); await page.keyboard.press('m'); await page.ke
 await sleep(800);
 ok('Shift+M removes the marker under the playhead', (await doc()).markers.length === 0);
 
+// 9k. Lane mute: clicking a lane's name switches the whole lane off, and back on
+await page.evaluate(() => { const l = Array.from(document.querySelectorAll('.tl-label.mutable')).find((e) => (e as HTMLElement).innerText.startsWith('Overlay 1')) as HTMLElement; l.click(); });
+await sleep(1000);
+const laneOff = (await doc()).beats.flatMap((b: any) => b.layers).filter((l: any) => l.meta.disabled).length;
+ok('clicking a lane name switches every item in it off', laneOff >= 2 && (await page.$$('.tl-label.muted')).length === 1, `${laneOff} items off`);
+await page.evaluate(() => { const l = document.querySelector('.tl-label.muted') as HTMLElement; l.click(); });
+await sleep(1000);
+ok('clicking it again switches them back on', (await doc()).beats.flatMap((b: any) => b.layers).filter((l: any) => l.meta.disabled).length === 0);
+
 // 10. Another client (the AI via the API) changes the doc: the open editor updates live
 const rev0 = (await api('/api/open', { dir: DIR })).rev;
 const before2 = (await page.$$('.clip')).length;

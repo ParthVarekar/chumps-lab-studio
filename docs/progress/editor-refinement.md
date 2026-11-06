@@ -16,3 +16,7 @@ Markers on the ruler, ripple delete, track mute, more transitions (push, iris, w
 5. **Markers.** `markers` on the edit (never rendered). M drops one at the playhead, Shift+M removes the one under it, Ctrl+←/→ jumps between them; they show as a blue lane on the timeline, click to seek. `add_marker` / `remove_marker` ops (the AI can mark chapters too).
 6. **Ripple delete** (Shift+Delete, or the Ripple button). Removes the selection (with its group) and slides every later, unlocked item left by the width of the hole; locked items and earlier items stay. Implemented once as `rippleOps()` in the command layer, so scripts and the AI can use it too. Unit-tested.
 7. **The assistant knows the new commands.** `group`, `ungroup`, `set_enabled` and `add_marker` are chat tools ("turn off that zoom so I can compare, and put a marker at 1:04" works), and the item list it sees shows `group=` and `OFF`. `/api/items` reports `group` and `disabled` too.
+8. **Lane mute.** Click a lane's name on the timeline to switch every item in it off (struck-through label), click again to bring them back. Built on `set_enabled`, group-aware.
+
+## Next (not started)
+Keyframed effect settings, speed changes / freeze frame, lane lock, marker rename and drag.

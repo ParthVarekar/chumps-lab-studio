@@ -255,3 +255,7 @@ button.wide { width: 100%; justify-content: center; }
 
 .clip-marker { background: #2f6fed; }
 .clip-marker svg { margin-right: 3px; flex: none; }
+
+.tl-label.mutable { cursor: pointer; }
+.tl-label.mutable:hover { color: var(--text); }
+.tl-label.muted { text-decoration: line-through; opacity: 0.5; }
