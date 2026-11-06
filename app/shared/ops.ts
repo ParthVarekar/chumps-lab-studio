@@ -701,6 +701,42 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 	}
 }
 
+/**
+ * Ripple delete: remove `ids` (and whatever is grouped with them), then slide every later, unlocked item left by the
+ * width of the hole so the gap closes. Returns plain ops, so the UI, scripts and the AI all share one implementation.
+ */
+export function rippleOps(edd: Edd, ids: string[]): Op[] {
+	const doomed = new Set(ids.flatMap((id) => (find(edd, id) ? withGroup(edd, id) : [])));
+	const spans = [...doomed].map((id) => spanOf(edd, id)).filter((x): x is { start: number; end: number } => !!x);
+	if (!spans.length) return [];
+	const from = Math.min(...spans.map((x) => x.start));
+	const to = Math.max(...spans.map((x) => x.end));
+	const gap = to - from;
+	const later: { id: string; start: number }[] = [];
+	const seen = new Set<string>();
+	const all: string[] = [];
+	for (const s of edd.audio.sfx) all.push(s.id);
+	for (const b of edd.beats) {
+		for (const l of b.layers) if (!isContinuation(l)) all.push(l.id);
+		b.camera.forEach((_, i) => all.push(camId(b, i)));
+		b.moods.forEach((_, i) => all.push(moodId(b, i)));
+	}
+	for (const id of all) {
+		if (doomed.has(id)) continue;
+		const sp = spanOf(edd, id);
+		const m = metaOfItem(edd, id);
+		if (!sp || !m || m.locked || sp.start < to - 1e-6) continue;
+		// A group moves as one: only its first member (in time) issues the move.
+		if (m.group) { if (seen.has(m.group)) continue; seen.add(m.group); }
+		later.push({ id, start: sp.start });
+	}
+	later.sort((a, z) => a.start - z.start);
+	return [
+		...oneOfEach(edd, [...doomed]).map((id) => ({ op: 'remove' as const, id })),
+		...later.map((x) => ({ op: 'set_time' as const, id: x.id, start: Math.max(0, x.start - gap) })),
+	];
+}
+
 /** Global [start, end] of an item, for the UI. */
 export function spanOf(edd: Edd, id: string): { start: number; end: number } | null {
 	const f = find(edd, id);

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Edd } from '@cls/engine/src/edd/schema';
-import { applyOps, find, metaOfItem, segments, spanOf, withGroup, type Op } from '../shared/ops';
+import { applyOps, find, metaOfItem, rippleOps, segments, spanOf, withGroup, type Op } from '../shared/ops';
 
 const path = process.env.EDD ?? 'D:/ChumpsLabStudio/projects/raw-loop-kokoro/edd.json';
 const edd0 = Edd.parse(JSON.parse(readFileSync(path, 'utf8')));
@@ -86,4 +86,14 @@ assert.equal(mk1.edd.markers[1].label, 'intro ends');
 const mk2 = run(mk1.edd, { op: 'remove_marker', id: mk1.notes[0].id! });
 assert.equal(mk2.edd.markers.length, 1);
 assert.equal(applyOps(mk2.edd, [{ op: 'remove_marker', id: 'nope' }]).notes[0].ok, false);
+// 10. ripple delete closes the gap (grouped and locked items handled)
+const rp = run(edd0, { op: 'add_layer', component: 'Title', at: 20, until: 22, props: { text: 'one' } }, { op: 'add_layer', component: 'Title', at: 25, until: 27, props: { text: 'two' } }, { op: 'add_layer', component: 'Title', at: 8, until: 9, props: { text: 'before' } }, { op: 'add_layer', component: 'Title', at: 40, until: 41, props: { text: 'locked' } });
+const rpLock = run(rp.edd, { op: 'lock', id: rp.notes[3].id!, locked: true });
+const rops = rippleOps(rpLock.edd, [rp.notes[0].id!]);
+assert.equal(rops[0].op, 'remove');
+const rr = applyOps(rpLock.edd, rops).edd;
+assert.equal(find(rr, rp.notes[0].id!), null, 'the item is gone');
+assert.ok(Math.abs(spanOf(rr, rp.notes[1].id!)!.start - 23) < 0.05, 'the later item slid left by the hole (2 s)');
+assert.ok(Math.abs(spanOf(rr, rp.notes[2].id!)!.start - 8) < 0.05, 'an earlier item did not move');
+assert.ok(Math.abs(spanOf(rr, rp.notes[3].id!)!.start - 40) < 0.05, 'a locked item did not move');
 console.log('ops: all checks passed');

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { camId, find, metaOfItem, moodId, oneOfEach, spanOf } from '../shared/ops';
+import { camId, find, metaOfItem, moodId, oneOfEach, rippleOps, spanOf } from '../shared/ops';
 import { useStudio } from './store';
 import { Assistant } from './ui/Assistant';
 import { Inspector } from './ui/Inspector';
@@ -94,6 +94,7 @@ function useShortcuts() {
 			else if (e.key === 'End') go(total);
 			else if (e.key === '+' || e.key === '=') st.set({ zoom: Math.min(240, st.zoom * 1.3) });
 			else if (e.key === '-') st.set({ zoom: Math.max(8, st.zoom / 1.3) });
+			else if ((e.key === 'Delete' || e.key === 'Backspace') && e.shiftKey && sel.length) { e.preventDefault(); void st.run(rippleOps(st.edd, sel)); }
 			else if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) { e.preventDefault(); void st.run(oneOfEach(st.edd!, sel).map((id) => ({ op: 'remove' as const, id }))); }
 			else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && sel.length) { e.preventDefault(); void st.run(oneOfEach(st.edd!, sel).map((id) => ({ op: 'duplicate' as const, id }))); }
 			else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g' && sel.length) {

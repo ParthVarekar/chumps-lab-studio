@@ -1,9 +1,9 @@
 import { Timeline as XTimeline, type TimelineState } from '@xzdarcy/react-timeline-editor';
-import { Copy, Flag, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
+import { Copy, ListX, Flag, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { fmt, useStudio } from '../store';
-import { find, oneOfEach, spanOf } from '../../shared/ops';
+import { find, oneOfEach, rippleOps, spanOf } from '../../shared/ops';
 import { EFFECTS, buildRows } from './timelineModel';
 
 const Waveform: React.FC<{ peaks: number[]; duration: number }> = ({ peaks, duration }) => {
@@ -68,6 +68,7 @@ export const TimelinePanel: React.FC = () => {
 				<button title="Split at playhead (S)" disabled={!one || items[one]?.kind !== 'layer'} onClick={() => one && run([{ op: 'split', id: one, at: useStudio.getState().time }])}><Scissors size={15} /> Split</button>
 				<button title="Duplicate (Ctrl+D)" disabled={!sel.length} onClick={() => run(oneOfEach(real!, sel).map((id) => ({ op: 'duplicate' as const, id })))}><Copy size={15} /> Duplicate</button>
 				<button title="Delete (Del)" disabled={!sel.length} onClick={() => run(oneOfEach(real!, sel).map((id) => ({ op: 'remove' as const, id })))}><Trash2 size={15} /> Delete</button>
+				<button title="Delete and close the gap: later items slide left (Shift+Del)" disabled={!sel.length} onClick={() => run(rippleOps(real!, sel))}><ListX size={15} /> Ripple</button>
 				<button title="Lock / unlock (L)" disabled={!sel.length} onClick={() => run(sel.map((id) => ({ op: 'lock' as const, id, locked: !lockedAll })))}>{lockedAll ? <Unlock size={15} /> : <Lock size={15} />} {lockedAll ? 'Unlock' : 'Lock'}</button>
 				<button title="Group the selected items so they move, copy, lock and delete together (Ctrl+G)" disabled={sel.length < 2 || sel.every((id) => items[id]?.group && items[id]?.group === items[sel[0]]?.group)} onClick={() => run([{ op: 'group', ids: sel }])}><Link2 size={15} /> Group</button>
 				<button title="Release the selected group (Ctrl+Shift+G)" disabled={!sel.some((id) => items[id]?.group)} onClick={() => run([{ op: 'ungroup', id: sel.find((id) => items[id]?.group)! }])}><Link2Off size={15} /> Ungroup</button>
