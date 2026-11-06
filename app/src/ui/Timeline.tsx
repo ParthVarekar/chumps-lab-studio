@@ -1,9 +1,9 @@
 import { Timeline as XTimeline, type TimelineState } from '@xzdarcy/react-timeline-editor';
-import { Copy, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
+import { Copy, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { fmt, useStudio } from '../store';
-import { find, spanOf } from '../../shared/ops';
+import { find, oneOfEach, spanOf } from '../../shared/ops';
 import { EFFECTS, buildRows } from './timelineModel';
 
 const Waveform: React.FC<{ peaks: number[]; duration: number }> = ({ peaks, duration }) => {
@@ -22,6 +22,9 @@ const Waveform: React.FC<{ peaks: number[]; duration: number }> = ({ peaks, dura
 		</svg>
 	);
 };
+
+/** A stable colour slot (0-5) per group tag, so linked clips share a stripe colour. */
+const hue = (g: string) => [...g].reduce((n, ch) => n + ch.charCodeAt(0), 0) % 6;
 
 export const TimelinePanel: React.FC = () => {
 	const edd = useStudio((s) => s.draft?.edd ?? s.edd);
@@ -63,9 +66,11 @@ export const TimelinePanel: React.FC = () => {
 		<div className="timeline" ref={wrap}>
 			<div className="tl-toolbar">
 				<button title="Split at playhead (S)" disabled={!one || items[one]?.kind !== 'layer'} onClick={() => one && run([{ op: 'split', id: one, at: useStudio.getState().time }])}><Scissors size={15} /> Split</button>
-				<button title="Duplicate (Ctrl+D)" disabled={!sel.length} onClick={() => run(sel.map((id) => ({ op: 'duplicate' as const, id })))}><Copy size={15} /> Duplicate</button>
-				<button title="Delete (Del)" disabled={!sel.length} onClick={() => run(sel.map((id) => ({ op: 'remove' as const, id })))}><Trash2 size={15} /> Delete</button>
+				<button title="Duplicate (Ctrl+D)" disabled={!sel.length} onClick={() => run(oneOfEach(real!, sel).map((id) => ({ op: 'duplicate' as const, id })))}><Copy size={15} /> Duplicate</button>
+				<button title="Delete (Del)" disabled={!sel.length} onClick={() => run(oneOfEach(real!, sel).map((id) => ({ op: 'remove' as const, id })))}><Trash2 size={15} /> Delete</button>
 				<button title="Lock / unlock (L)" disabled={!sel.length} onClick={() => run(sel.map((id) => ({ op: 'lock' as const, id, locked: !lockedAll })))}>{lockedAll ? <Unlock size={15} /> : <Lock size={15} />} {lockedAll ? 'Unlock' : 'Lock'}</button>
+				<button title="Group the selected items so they move, copy, lock and delete together (Ctrl+G)" disabled={sel.length < 2 || sel.every((id) => items[id]?.group && items[id]?.group === items[sel[0]]?.group)} onClick={() => run([{ op: 'group', ids: sel }])}><Link2 size={15} /> Group</button>
+				<button title="Release the selected group (Ctrl+Shift+G)" disabled={!sel.some((id) => items[id]?.group)} onClick={() => run([{ op: 'ungroup', id: sel.find((id) => items[id]?.group)! }])}><Link2Off size={15} /> Ungroup</button>
 				<span className="sep" />
 				<button className={snap ? 'on' : ''} title="Snap to other items' edges" onClick={() => setSnap(!snap)}><Magnet size={15} /> Snap</button>
 				<span className="spacer" />
@@ -111,8 +116,8 @@ export const TimelinePanel: React.FC = () => {
 								if (action.id === 'voice') return <div className="clip clip-voice"><Waveform peaks={peaks} duration={duration} /></div>;
 								if (action.id.startsWith('beat:')) return <div className="clip clip-beat">{action.id.slice(5)}</div>;
 								const m = items[action.id];
-								const cls = ['clip', `clip-${action.effectId}`, selection.includes(action.id) ? 'selected' : '', m?.locked ? 'locked' : '', m?.origin === 'user' ? 'mine' : '', draftIds.has(action.id) ? 'ghost' : ''].filter(Boolean).join(' ');
-								return <div className={cls}>{m?.locked ? <Lock size={10} /> : null}<span>{m?.label ?? action.effectId}</span></div>;
+								const cls = ['clip', `clip-${action.effectId}`, selection.includes(action.id) ? 'selected' : '', m?.locked ? 'locked' : '', m?.group ? `grouped g-${hue(m.group)}` : '', m?.origin === 'user' ? 'mine' : '', draftIds.has(action.id) ? 'ghost' : ''].filter(Boolean).join(' ');
+								return <div className={cls} title={m?.group ? `Grouped (${m.group}): moves, copies and deletes with its group` : undefined}>{m?.locked ? <Lock size={10} /> : null}{m?.group ? <Link2 size={10} /> : null}<span>{m?.label ?? action.effectId}</span></div>;
 							}}
 							style={{ width: '100%', height: '100%', background: 'transparent' }}
 						/>

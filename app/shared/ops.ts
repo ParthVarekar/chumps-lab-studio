@@ -27,6 +27,7 @@ export const Op = z.discriminatedUnion('op', [
 		space: z.enum(['screen', 'stage']).optional(),
 		enter: z.object({ preset: EnterPreset, direction: Direction.optional(), durationFrames: z.number().int().optional() }).optional(),
 		why: z.string().optional(),
+		group: z.string().optional().describe('link tag; items with the same tag move, copy, lock and delete together (e.g. a zoom and the spotlight on it)'),
 	}),
 	z.object({
 		op: z.literal('add_zoom'),
@@ -34,8 +35,9 @@ export const Op = z.discriminatedUnion('op', [
 		until: z.number().describe('global time the zoom starts going back out'),
 		to: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).describe('region of the frame to fill the screen, % of frame'),
 		why: z.string().optional(),
+		group: z.string().optional().describe('link tag; items with the same tag move, copy, lock and delete together (e.g. a zoom and the spotlight on it)'),
 	}),
-	z.object({ op: z.literal('add_mood'), kind: MoodKind, at: z.number(), duration: z.number().default(1.2), why: z.string().optional() }),
+	z.object({ op: z.literal('add_mood'), kind: MoodKind, at: z.number(), duration: z.number().default(1.2), why: z.string().optional(), group: z.string().optional().describe('link tag; items with the same tag move, copy, lock and delete together (e.g. a zoom and the spotlight on it)'), }),
 	z.object({
 		op: z.literal('add_sfx'),
 		src: z.string().describe('project-relative file, e.g. media/sfx/x.wav'),
@@ -43,6 +45,7 @@ export const Op = z.discriminatedUnion('op', [
 		volume: z.number().default(0.5),
 		role: z.string().optional(),
 		why: z.string().optional(),
+		group: z.string().optional().describe('link tag; items with the same tag move, copy, lock and delete together (e.g. a zoom and the spotlight on it)'),
 	}),
 	z.object({ op: z.literal('remove'), id: Id }),
 	z.object({
@@ -69,6 +72,8 @@ export const Op = z.discriminatedUnion('op', [
 	z.object({ op: z.literal('duplicate'), id: Id, at: z.number().optional().describe('global start of the copy (default: right after the original)') }),
 	z.object({ op: z.literal('split'), id: Id, at: z.number() }),
 	z.object({ op: z.literal('lock'), id: Id, locked: z.boolean() }),
+	z.object({ op: z.literal('group'), ids: z.array(Id).min(2).describe('items to link (zoom, effects, sounds): afterwards they move, copy, lock and delete as one'), name: z.string().optional() }),
+	z.object({ op: z.literal('ungroup'), id: Id.describe('any member: the whole group is released') }),
 ]);
 export type Op = z.input<typeof Op>;
 
@@ -228,8 +233,155 @@ export function applyOps(edd: Edd, ops: Op[], author: 'user' | 'ai' = 'user'): {
 	return { edd: cur, notes };
 }
 
-function meta(author: 'user' | 'ai', why?: string) {
-	return { origin: author === 'user' ? ('user' as const) : ('ai' as const), locked: false, reason: why ?? (author === 'user' ? 'added by you' : undefined) };
+function meta(author: 'user' | 'ai', why?: string, group?: string) {
+	return { origin: author === 'user' ? ('user' as const) : ('ai' as const), locked: false, reason: why ?? (author === 'user' ? 'added by you' : undefined), ...(group ? { group } : {}) };
+}
+
+// ------------------------------------------------------------------ groups
+// A group is a shared `meta.group` tag. The commands that move, copy, lock or remove things look at it, so a zoom and the spotlight on it
+// behave as one object while each stays an ordinary item (still resizable, restylable, or ungroupable on its own).
+
+type Mood = Beat['moods'][number];
+type Cam = Beat['camera'][number];
+
+export function metaOfItem(edd: Edd, id: string): { locked: boolean; group?: string } | null {
+	const f = find(edd, id);
+	if (!f) return null;
+	if (f.kind === 'layer') return f.layer!.meta;
+	if (f.kind === 'camera') return f.beat!.camera[f.index!].meta;
+	if (f.kind === 'mood') return f.beat!.moods[f.index!].meta;
+	return f.sfx!.meta;
+}
+
+/** Ids of every item carrying this tag (layers once, without their continuation segments). */
+export function groupMembers(edd: Edd, name: string): string[] {
+	const ids: string[] = [];
+	for (const s of edd.audio.sfx) if (s.meta.group === name) ids.push(s.id);
+	for (const b of edd.beats) {
+		for (const l of b.layers) if (!isContinuation(l) && l.meta.group === name) ids.push(l.id);
+		b.camera.forEach((c, i) => { if (c.meta.group === name) ids.push(camId(b, i)); });
+		b.moods.forEach((m, i) => { if (m.meta.group === name) ids.push(moodId(b, i)); });
+	}
+	return ids;
+}
+
+/** The members of the group an item belongs to (itself included), or just [id] when it is ungrouped. */
+export function withGroup(edd: Edd, id: string): string[] {
+	const g = metaOfItem(edd, id)?.group;
+	return g ? groupMembers(edd, g) : [id];
+}
+
+/** Selecting one member selects its whole group. */
+export function expandGroups(edd: Edd, ids: string[]): string[] {
+	return Array.from(new Set(ids.flatMap((id) => (find(edd, id) ? withGroup(edd, id) : [id]))));
+}
+
+/** One id per group: the group commands already act on every member, so a multi-selection must not repeat them. */
+export function oneOfEach(edd: Edd, ids: string[]): string[] {
+	const seen = new Set<string>();
+	return ids.filter((id) => {
+		const g = metaOfItem(edd, id)?.group;
+		if (!g) return true;
+		if (seen.has(g)) return false;
+		seen.add(g);
+		return true;
+	});
+}
+
+export interface Held { kind: Found['kind']; obj: Layer | Cam | Mood | SfxClip; start: number; end: number; exit?: Layer['exit'] }
+
+/** A copy of an item with its global span; the document is left alone. */
+export function peek(edd: Edd, id: string): Held {
+	const f = find(edd, id);
+	if (!f) throw new Error(`no item ${id}`);
+	if (f.kind === 'layer') {
+		const segs = segments(edd, id);
+		return { kind: 'layer', obj: clone(segs[0].layer), start: segs[0].start, end: segs[segs.length - 1].end, exit: clone(segs[0].layer.exit ?? segs[segs.length - 1].layer.exit) };
+	}
+	if (f.kind === 'camera') {
+		const c = f.beat!.camera[f.index!];
+		const start = f.beat!.start + c.at;
+		return { kind: 'camera', obj: clone(c), start, end: start + c.inFrames / 30 + c.hold + c.outFrames / 30 };
+	}
+	if (f.kind === 'mood') {
+		const m = f.beat!.moods[f.index!];
+		return { kind: 'mood', obj: clone(m), start: f.beat!.start + m.at, end: f.beat!.start + m.at + m.duration };
+	}
+	return { kind: 'sfx', obj: clone(f.sfx!), start: f.sfx!.at, end: f.sfx!.at + 0.4 };
+}
+
+export function dropItem(edd: Edd, id: string) {
+	const f = find(edd, id);
+	if (!f) return;
+	if (f.kind === 'layer') dropLayer(edd, id);
+	else if (f.kind === 'camera') f.beat!.camera.splice(f.index!, 1);
+	else if (f.kind === 'mood') f.beat!.moods.splice(f.index!, 1);
+	else edd.audio.sfx = edd.audio.sfx.filter((s) => s.id !== id);
+}
+
+/** Put a held item back at a new global start (keeping its length). Returns its (possibly new) id. */
+export function insertItem(edd: Edd, h: Held, ns: number, patch?: { group?: string; fresh?: boolean }): string {
+	const meta = h.obj.meta;
+	meta.origin = 'user';
+	if (patch && 'group' in patch) { if (patch.group) meta.group = patch.group; else delete meta.group; }
+	if (patch?.fresh) { meta.locked = false; meta.reason = 'duplicated by you'; }
+	if (h.kind === 'layer') {
+		const l = h.obj as Layer;
+		if (patch?.fresh) l.id = nextId(edd, 'u');
+		if (h.exit) l.exit = h.exit;
+		placeLayer(edd, l, ns, ns + (h.end - h.start));
+		return baseId(l.id);
+	}
+	if (h.kind === 'camera') {
+		const c = h.obj as Cam;
+		const nb = beatAt(edd, ns);
+		c.at = r3(Math.max(0, ns - nb.start));
+		nb.camera.push(c);
+		nb.camera.sort((a, z) => a.at - z.at);
+		return camId(nb, nb.camera.indexOf(c));
+	}
+	if (h.kind === 'mood') {
+		const m = h.obj as Mood;
+		const nb = beatAt(edd, ns);
+		m.at = r3(Math.max(0, ns - nb.start));
+		m.duration = r3(Math.min(m.duration, Math.max(0.2, nb.end - ns)));
+		nb.moods.push(m);
+		return moodId(nb, nb.moods.indexOf(m));
+	}
+	const s = h.obj as SfxClip;
+	const used = new Set(edd.audio.sfx.map((x) => x.id));
+	if (patch?.fresh || used.has(s.id)) { let n = edd.audio.sfx.length + 1; while (used.has(`sfx${n}`)) n++; s.id = `sfx${n}`; }
+	s.at = r3(Math.max(0, ns));
+	edd.audio.sfx.push(s);
+	edd.audio.sfx.sort((a, z) => a.at - z.at);
+	return s.id;
+}
+
+export function newGroupName(edd: Edd): string {
+	const used = new Set<string>();
+	for (const s of edd.audio.sfx) if (s.meta.group) used.add(s.meta.group);
+	for (const b of edd.beats) {
+		for (const l of b.layers) if (l.meta.group) used.add(l.meta.group);
+		for (const c of b.camera) if (c.meta.group) used.add(c.meta.group);
+		for (const m of b.moods) if (m.meta.group) used.add(m.meta.group);
+	}
+	let n = 1;
+	while (used.has(`g${n}`)) n++;
+	return `g${n}`;
+}
+
+function setGroup(edd: Edd, id: string, group?: string) {
+	const f = find(edd, id);
+	if (!f) throw new Error(`no item ${id}`);
+	const apply = (m: { group?: string }) => { if (group) m.group = group; else delete m.group; };
+	if (f.kind === 'layer') segments(edd, id).forEach((s) => apply(s.layer.meta));
+	else if (f.kind === 'camera') apply(f.beat!.camera[f.index!].meta);
+	else if (f.kind === 'mood') apply(f.beat!.moods[f.index!].meta);
+	else apply(f.sfx!.meta);
+}
+
+function assertUnlocked(edd: Edd, ids: string[]) {
+	for (const id of ids) if (metaOfItem(edd, id)?.locked) throw new Error(`${id} is locked`);
 }
 
 function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
@@ -248,7 +400,7 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 				z: d.z,
 				enter: { ...d.enter, ...(op.enter ?? {}), direction: op.enter?.direction ?? d.enter.direction, durationFrames: op.enter?.durationFrames ?? d.enter.durationFrames, at: 0 },
 				exit: { at: 0, preset: d.exitPreset, durationFrames: 5 },
-				meta: meta(author, op.why),
+				meta: meta(author, op.why, op.group),
 			};
 			placeLayer(edd, layer, start, end);
 			return { ok: true, op, id, message: `added ${op.component} ${id} at ${r3(start)} s` };
@@ -257,27 +409,33 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 			const b = beatAt(edd, op.at);
 			const at = Math.max(op.at, b.start);
 			const hold = Math.max(0.3, Math.min(op.until, b.end - 0.4) - at - 0.2);
-			b.camera.push({ at: r3(at - b.start), to: op.to, inFrames: 6, hold: r3(hold), outFrames: 10, tiltDeg: 0, meta: meta(author, op.why) });
+			b.camera.push({ at: r3(at - b.start), to: op.to, inFrames: 6, hold: r3(hold), outFrames: 10, tiltDeg: 0, meta: meta(author, op.why, op.group) });
 			b.camera.sort((a, z) => a.at - z.at);
 			const idx = b.camera.findIndex((c) => c.at === r3(at - b.start) && c.to === op.to);
 			return { ok: true, op, id: camId(b, Math.max(0, idx)), message: `added zoom at ${r3(at)} s` };
 		}
 		case 'add_mood': {
 			const b = beatAt(edd, op.at);
-			b.moods.push({ kind: op.kind, at: r3(Math.max(0, op.at - b.start)), duration: Math.min(op.duration ?? 1.2, b.end - op.at), intensity: 0.6, meta: meta(author, op.why) });
+			b.moods.push({ kind: op.kind, at: r3(Math.max(0, op.at - b.start)), duration: Math.min(op.duration ?? 1.2, b.end - op.at), intensity: 0.6, meta: meta(author, op.why, op.group) });
 			return { ok: true, op, id: moodId(b, b.moods.length - 1), message: `added ${op.kind} mood at ${r3(op.at)} s` };
 		}
 		case 'add_sfx': {
 			const used = new Set(edd.audio.sfx.map((s) => s.id));
 			let n = edd.audio.sfx.length + 1;
 			while (used.has(`sfx${n}`)) n++;
-			edd.audio.sfx.push({ id: `sfx${n}`, src: op.src, at: r3(Math.max(0, op.at)), volume: op.volume ?? 0.5, role: op.role, meta: meta(author, op.why) });
+			edd.audio.sfx.push({ id: `sfx${n}`, src: op.src, at: r3(Math.max(0, op.at)), volume: op.volume ?? 0.5, role: op.role, meta: meta(author, op.why, op.group) });
 			edd.audio.sfx.sort((a, z) => a.at - z.at);
 			return { ok: true, op, id: `sfx${n}`, message: `added sound at ${r3(op.at)} s` };
 		}
 		case 'remove': {
 			const f = find(edd, op.id);
 			if (!f) throw new Error(`no item ${op.id}`);
+			const crew = withGroup(edd, op.id);
+			if (crew.length > 1) {
+				assertUnlocked(edd, crew);
+				for (const id of crew) dropItem(edd, id);
+				return { ok: true, op, message: `removed ${op.id} and the ${crew.length - 1} item(s) grouped with it` };
+			}
 			if (f.kind === 'layer') {
 				if (f.layer!.meta.locked) throw new Error(`${op.id} is locked`);
 				dropLayer(edd, op.id);
@@ -293,6 +451,21 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 		case 'set_time': {
 			const f = find(edd, op.id);
 			if (!f) throw new Error(`no item ${op.id}`);
+			// Moving one member (a new start, no new end) moves the whole group by the same amount. Resizing an edge only touches that item.
+			const crew = withGroup(edd, op.id);
+			if (crew.length > 1 && op.start !== undefined && op.end === undefined) {
+				assertUnlocked(edd, crew);
+				const held = crew.map((id) => ({ id, h: peek(edd, id) }));
+				const lead = held.find((x) => x.id === op.id)!;
+				const total = edd.beats[edd.beats.length - 1].end;
+				let delta = op.start - lead.h.start;
+				delta = Math.max(delta, -Math.min(...held.map((x) => x.h.start)));
+				delta = Math.min(delta, total - MIN_LEN - Math.max(...held.map((x) => x.h.start)));
+				for (const x of held) dropItem(edd, x.id);
+				let leadId = op.id;
+				for (const x of held) { const nid = insertItem(edd, x.h, x.h.start + delta); if (x.id === op.id) leadId = nid; }
+				return { ok: true, op, id: leadId, message: `moved ${op.id} and ${crew.length - 1} grouped item(s) by ${r3(delta)} s` };
+			}
 			if (f.kind === 'sfx') {
 				if (f.sfx!.meta.locked) throw new Error(`${op.id} is locked`);
 				f.sfx!.at = r3(Math.max(0, op.start ?? f.sfx!.at));
@@ -401,6 +574,18 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 		case 'duplicate': {
 			const f = find(edd, op.id);
 			if (!f) throw new Error(`no item ${op.id}`);
+			const crew = withGroup(edd, op.id);
+			if (crew.length > 1) {
+				const held = crew.map((id) => ({ id, h: peek(edd, id) }));
+				const lead = held.find((x) => x.id === op.id)!;
+				const first = Math.min(...held.map((x) => x.h.start));
+				const last = Math.max(...held.map((x) => x.h.end));
+				const delta = (op.at ?? last + 0.2 + (lead.h.start - first)) - lead.h.start;
+				const name = newGroupName(edd);
+				let leadId = op.id;
+				for (const x of held) { const nid = insertItem(edd, x.h, x.h.start + delta, { group: name, fresh: true }); if (x.id === op.id) leadId = nid; }
+				return { ok: true, op, id: leadId, message: `duplicated ${crew.length} grouped items` };
+			}
 			if (f.kind === 'sfx') {
 				const used = new Set(edd.audio.sfx.map((s) => s.id));
 				let n = edd.audio.sfx.length + 1;
@@ -458,11 +643,31 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 		case 'lock': {
 			const f = find(edd, op.id);
 			if (!f) throw new Error(`no item ${op.id}`);
+			const crew = withGroup(edd, op.id);
+			if (crew.length > 1) {
+				for (const id of crew) { const g = find(edd, id)!; if (g.kind === 'layer') segments(edd, id).forEach((x) => (x.layer.meta.locked = op.locked)); else metaOfItem(edd, id)!.locked = op.locked; }
+				return { ok: true, op, id: op.id, message: `${op.locked ? 'locked' : 'unlocked'} ${crew.length} grouped items` };
+			}
 			if (f.kind === 'layer') segments(edd, op.id).forEach((s) => (s.layer.meta.locked = op.locked));
 			else if (f.kind === 'camera') f.beat!.camera[f.index!].meta.locked = op.locked;
 			else if (f.kind === 'mood') f.beat!.moods[f.index!].meta.locked = op.locked;
 			else f.sfx!.meta.locked = op.locked;
 			return { ok: true, op, id: op.id, message: `${op.locked ? 'locked' : 'unlocked'} ${op.id}` };
+		}
+		case 'group': {
+			const ids = Array.from(new Set(op.ids));
+			for (const id of ids) if (!find(edd, id)) throw new Error(`no item ${id}`);
+			// Joining an existing group pulls its other members in too, so groups never half-merge.
+			const all = Array.from(new Set(ids.flatMap((id) => withGroup(edd, id))));
+			const name = op.name ?? newGroupName(edd);
+			for (const id of all) setGroup(edd, id, name);
+			return { ok: true, op, id: name, message: `grouped ${all.length} items as ${name}` };
+		}
+		case 'ungroup': {
+			const crew = withGroup(edd, op.id);
+			if (crew.length < 2 && !metaOfItem(edd, op.id)?.group) throw new Error(`${op.id} is not in a group`);
+			for (const id of crew) setGroup(edd, id, undefined);
+			return { ok: true, op, id: op.id, message: `ungrouped ${crew.length} items` };
 		}
 	}
 }

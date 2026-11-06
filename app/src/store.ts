@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import type { Edd } from '@cls/engine/src/edd/schema';
-import { find, spanOf, type ApplyNote, type Op } from '../shared/ops';
+import { expandGroups, find, spanOf, type ApplyNote, type Op } from '../shared/ops';
 import { api, subscribe, type AssistantReply, type ComponentSchemas, type ElementEntry, type Opened, type ProjectInfo, type Word } from './api';
 import { placeOp, type Geometry, type Tile } from './ui/tiles';
 
 export type Tab = 'add' | 'effects' | 'transitions' | 'captions' | 'elements' | 'logos' | 'stickers' | 'sounds' | 'transcript';
 export type RightTab = 'inspector' | 'assistant' | 'review';
-export type Pick = null | { kind: 'zoom' | 'label' | 'region' } | { kind: 'retarget'; id: string } | { kind: 'place'; tile: Tile };
+export type Pick = null | { kind: 'zoom' | 'label' | 'region' } | { kind: 'focus'; effect: 'spotlight' | 'hl-box' | 'hl-ellipse' } | { kind: 'retarget'; id: string } | { kind: 'place'; tile: Tile };
 export type Region = { x: number; y: number; w: number; h: number };
 
 export interface Draft {
@@ -161,11 +161,14 @@ export const useStudio = create<State>((set, get) => ({
 		set({ edd: o.edd, rev: o.rev, canUndo: o.canUndo > 0, canRedo: o.canRedo > 0 });
 	},
 
-	select: (ids, additive) =>
-		set((s) => ({
+	select: (rawIds, additive) =>
+		set((s) => {
+			const ids = s.edd ? expandGroups(s.edd, rawIds) : rawIds;
+			return {
 			selection: additive ? (ids.every((i) => s.selection.includes(i)) ? s.selection.filter((i) => !ids.includes(i)) : Array.from(new Set([...s.selection, ...ids]))) : ids,
 			rightTab: ids.length && s.rightTab === 'review' ? 'inspector' : s.rightTab,
-		})),
+			};
+		}),
 
 	render: async () => {
 		const { dir } = get();

@@ -5,9 +5,9 @@ import Moveable from 'react-moveable';
 import { EddVideo } from '@cls/engine/src/compositions/EddVideo';
 import { cameraAt } from '@cls/engine/src/motion/camera';
 import { totalFrames } from '@cls/engine/src/edd/timing';
-import { find } from '../../shared/ops';
+import { find, type Op } from '../../shared/ops';
 import { fmt, useStudio, type Region } from '../store';
-import type { Tile } from './tiles';
+import { EFFECT_TILES, placeOp, type Tile } from './tiles';
 
 const pct = (n: number) => `${n}%`;
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -154,6 +154,15 @@ export const Preview: React.FC = () => {
 		if (pick.kind === 'retarget') {
 			void run([{ op: 'set_style', id: pick.id, to: st }]);
 			set({ pick: null });
+		} else if (pick.kind === 'focus') {
+			// A zoom and an effect on the same spot, created together and linked: they move, copy, lock and delete as one.
+			const g = `f${Date.now().toString(36).slice(-5)}`;
+			const tile = EFFECT_TILES.find((x) => x.id === pick.effect)!;
+			void run([
+				{ op: 'add_zoom', at: t, until: t + 3, to: st, group: g, why: `focus: zoom + ${tile.label.toLowerCase()}` },
+				{ ...placeOp(tile, { time: t, region: st }), group: g } as Op,
+			]);
+			set({ pick: null });
 		} else if (pick.kind === 'zoom') {
 			void run([{ op: 'add_zoom', at: t, until: t + 2.5, to: st, why: 'zoom you drew' }]);
 			set({ pick: null });
@@ -231,7 +240,7 @@ export const Preview: React.FC = () => {
 						{drag && pick?.kind === 'place' && pick.tile.placement === 'vector' ? (
 							<svg className="vecline" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1={drag.x0} y1={drag.y0} x2={drag.x1} y2={drag.y1} vectorEffect="non-scaling-stroke" /></svg>
 						) : drag ? <div className="pickbox" style={{ left: pct(Math.min(drag.x0, drag.x1)), top: pct(Math.min(drag.y0, drag.y1)), width: pct(Math.abs(drag.x1 - drag.x0)), height: pct(Math.abs(drag.y1 - drag.y0)) }} /> : null}
-						{pick ? <div className="pickhint"><Crosshair size={14} /> {pick.kind === 'place' ? (pick.tile.placement === 'vector' ? `Drag the arrow: tail to tip (${pick.tile.label})` : pick.tile.placement === 'point' ? `Click where to put ${pick.tile.label} (or drag a box)` : `Drag a box for ${pick.tile.label}`) : `Drag a box for the ${pick.kind === 'zoom' || pick.kind === 'retarget' ? 'zoom' : pick.kind === 'label' ? 'label target' : 'area'}`} (Esc to cancel){cam.scale > 1.001 ? ' · the view is zoomed, coordinates follow it' : ''}</div> : null}
+						{pick ? <div className="pickhint"><Crosshair size={14} /> {pick.kind === 'place' ? (pick.tile.placement === 'vector' ? `Drag the arrow: tail to tip (${pick.tile.label})` : pick.tile.placement === 'point' ? `Click where to put ${pick.tile.label} (or drag a box)` : `Drag a box for ${pick.tile.label}`) : `Drag a box for the ${pick.kind === 'zoom' || pick.kind === 'retarget' || pick.kind === 'focus' ? 'zoom' : pick.kind === 'label' ? 'label target' : 'area'}`} (Esc to cancel){cam.scale > 1.001 ? ' · the view is zoomed, coordinates follow it' : ''}</div> : null}
 						{labelFor ? (
 							<form className="labelpop" style={{ left: pct(Math.min(70, labelFor.x)), top: pct(Math.min(85, labelFor.y + labelFor.h + 1)) }} onSubmit={(e) => {
 								e.preventDefault();

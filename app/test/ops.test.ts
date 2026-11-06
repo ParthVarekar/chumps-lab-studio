@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Edd } from '@cls/engine/src/edd/schema';
-import { applyOps, find, segments, spanOf, type Op } from '../shared/ops';
+import { applyOps, find, metaOfItem, segments, spanOf, withGroup, type Op } from '../shared/ops';
 
 const path = process.env.EDD ?? 'D:/ChumpsLabStudio/projects/raw-loop-kokoro/edd.json';
 const edd0 = Edd.parse(JSON.parse(readFileSync(path, 'utf8')));
@@ -51,4 +51,25 @@ const locked = run(lk.edd, { op: 'lock', id: lid, locked: true });
 const bad = applyOps(locked.edd, [{ op: 'remove', id: lid }]);
 assert.equal(bad.notes[0].ok, false);
 assert.ok(find(bad.edd, lid));
+// 7. groups: a zoom and the spotlight on it behave as one
+const gz = run(edd0, { op: 'add_zoom', at: 30, until: 33, to: { x: 10, y: 10, w: 40, h: 40 }, group: 'gx' }, { op: 'add_layer', component: 'Spotlight', at: 30, until: 34, group: 'gx' });
+const gzId = gz.notes[0].id!;
+const gsId = gz.notes[1].id!;
+assert.equal(withGroup(gz.edd, gzId).length, 2);
+const gm = run(gz.edd, { op: 'set_time', id: gsId, start: 41 });
+assert.ok(Math.abs(spanOf(gm.edd, gm.notes[0].id!)!.start - 41) < 0.01, 'the lead moved');
+const camNow = withGroup(gm.edd, gm.notes[0].id!).map((i) => spanOf(gm.edd, i)!.start).sort((a, b) => a - b);
+assert.ok(camNow.every((t) => t > 40), `the zoom moved with its spotlight: ${camNow}`);
+const gd = run(gm.edd, { op: 'duplicate', id: gm.notes[0].id! });
+assert.equal(withGroup(gd.edd, gd.notes[0].id!).length, 2, 'the copy is a group of two');
+assert.notEqual(metaOfItem(gd.edd, gd.notes[0].id!)!.group, 'gx', 'the copy has its own group tag');
+const gl = run(gm.edd, { op: 'lock', id: gm.notes[0].id!, locked: true });
+assert.equal(applyOps(gl.edd, [{ op: 'remove', id: gm.notes[0].id! }]).notes[0].ok, false, 'a locked member protects the group');
+const gr = run(gm.edd, { op: 'remove', id: gm.notes[0].id! });
+assert.equal(gr.edd.beats.flatMap((b) => b.camera).filter((c) => c.meta.group === 'gx').length, 0, 'removing one removes the whole group');
+const ug = run(gm.edd, { op: 'ungroup', id: gm.notes[0].id! });
+assert.equal(withGroup(ug.edd, gm.notes[0].id!).length, 1);
+const mk = run(edd0, { op: 'add_layer', component: 'Title', at: 5, props: { text: 'A' } }, { op: 'add_sfx', src: 'media/sfx/x.wav', at: 5 });
+const mg = run(mk.edd, { op: 'group', ids: [mk.notes[0].id!, mk.notes[1].id!] });
+assert.equal(withGroup(mg.edd, mk.notes[0].id!).length, 2);
 console.log('ops: all checks passed');

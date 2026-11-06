@@ -249,6 +249,29 @@ const gen2 = (await doc()).beats.flatMap((b: any) => b.layers).filter((l: any) =
 ok('changing a setting changes the element', Number(gen2[0].props.params?.value) === 33, JSON.stringify(gen2[0].props.params));
 await shot('7-element');
 
+// 9g. Groups: one gesture makes a zoom + spotlight that stay linked
+await railTo('Effects');
+await page.evaluate(() => (window as any).__studio.getState().seekTo(70));
+await sleep(700);
+const camsBefore = count(await doc()).cams;
+await page.evaluate(() => (Array.from(document.querySelectorAll('.tile')).find((b) => (b as HTMLElement).innerText.includes('Zoom + spotlight')) as HTMLElement).click());
+await sleep(300);
+const ov2 = await page.$eval('.overlay', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+await page.mouse.move(ov2.x + ov2.w * 0.3, ov2.y + ov2.h * 0.3);
+await page.mouse.down();
+await page.mouse.move(ov2.x + ov2.w * 0.6, ov2.y + ov2.h * 0.6, { steps: 8 });
+await page.mouse.up();
+await sleep(1200);
+const dG = await doc();
+const grouped = dG.beats.flatMap((b: any) => [...b.layers, ...b.camera].filter((x: any) => x.meta?.group));
+ok('Zoom + spotlight creates a zoom and a spotlight sharing one group', count(dG).cams === camsBefore + 1 && new Set(grouped.map((x: any) => x.meta.group)).size === 1 && grouped.length >= 2, `${grouped.length} linked items`);
+const camG = dG.beats.flatMap((b: any) => b.camera.map((c: any, i: number) => ({ b, c, id: `${b.id}cam${i + 1}` }))).find((x: any) => x.c.meta.group);
+const spotBefore = dG.beats.flatMap((b: any) => b.layers.map((l: any) => ({ b, l }))).find((x: any) => x.l.meta.group && x.l.component === 'Spotlight');
+await api('/api/ops', { dir: DIR, author: 'user', ops: [{ op: 'set_time', id: camG.id, start: camG.b.start + camG.c.at + 5 }] });
+const spotAfter = (await doc()).beats.flatMap((b: any) => b.layers.map((l: any) => ({ b, l }))).find((x: any) => x.l.meta.group && x.l.component === 'Spotlight');
+ok('moving the zoom moves its spotlight by the same amount', spotAfter && Math.abs((spotAfter.b.start + spotAfter.l.enter.at) - (spotBefore.b.start + spotBefore.l.enter.at) - 5) < 0.1);
+await shot('8-grouped');
+
 // 10. Another client (the AI via the API) changes the doc: the open editor updates live
 const rev0 = (await api('/api/open', { dir: DIR })).rev;
 const before2 = (await page.$$('.clip')).length;

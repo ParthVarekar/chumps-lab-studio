@@ -87,6 +87,8 @@ const ZoomLabelTiles: React.FC = () => {
 			<div className="group">Camera and labels</div>
 			<div className="grid2">
 				<button className="tile" onClick={() => set({ pick: { kind: 'zoom' }, status: 'Drag a box to zoom into' })}><Crosshair size={16} /><b>Zoom</b><small>Drag the region to zoom into</small></button>
+				<button className="tile" onClick={() => set({ pick: { kind: 'focus', effect: 'spotlight' }, status: 'Drag a box: it zooms in and the rest dims (linked)' })}><Crosshair size={16} /><b>Zoom + spotlight</b><small>One box: zoom in, dim the rest. Linked</small></button>
+				<button className="tile" onClick={() => set({ pick: { kind: 'focus', effect: 'hl-box' }, status: 'Drag a box: it zooms in and gets outlined (linked)' })}><Crosshair size={16} /><b>Zoom + highlight</b><small>One box: zoom in and outline it. Linked</small></button>
 				<button className="tile" onClick={() => set({ pick: { kind: 'label' }, status: 'Drag a box around the thing to label' })}><Crosshair size={16} /><b>Label</b><small>Drag around a UI element, type the text</small></button>
 			</div>
 		</>

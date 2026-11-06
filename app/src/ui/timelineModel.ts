@@ -1,10 +1,10 @@
 /** Edit → timeline rows. Everything is in global seconds; item ids are the ids the command layer uses. */
 import type { TimelineAction, TimelineEffect, TimelineRow } from '@xzdarcy/timeline-engine';
 import type { Edd } from '@cls/engine/src/edd/schema';
-import { camId, isContinuation, moodId, segments } from '../../shared/ops';
+import { camId, isContinuation, metaOfItem, moodId, segments } from '../../shared/ops';
 
 export interface RowMeta { label: string; kind: 'video' | 'voice' | 'camera' | 'screen' | 'stage' | 'mood' | 'sfx' }
-export interface ItemMeta { label: string; kind: 'layer' | 'camera' | 'mood' | 'sfx'; locked: boolean; origin: string; component?: string }
+export interface ItemMeta { label: string; kind: 'layer' | 'camera' | 'mood' | 'sfx'; locked: boolean; origin: string; component?: string; group?: string }
 
 export const EFFECTS: Record<string, TimelineEffect> = Object.fromEntries(
 	['beat', 'voice', 'camera', 'mood', 'sfx', 'Title', 'KineticWord', 'Header', 'PopImage', 'MemeSticker', 'EvidenceCard', 'MemeCut', 'UILabel', 'ColorChip', 'CodeBlock', 'Terminal', 'BarChart', 'Gauge', 'NeuralNet', 'Highlight', 'Spotlight', 'BlurRegion', 'Arrow', 'ClickRipple', 'StepBadge', 'LowerThird', 'Flash', 'FadeBlack', 'Wipe', 'Glitch', 'Vignette', 'Letterbox', 'Captions', 'Generated'].map((k) => [k, { id: k, name: k }]),
@@ -82,5 +82,6 @@ export function buildRows(edd: Edd, duration: number): { rows: TimelineRow[]; ro
 		})),
 	);
 	if (!sl.length) add('sfx-0', 'Sound', 'sfx', []);
+	for (const id of Object.keys(items)) items[id].group = metaOfItem(edd, id)?.group;
 	return { rows, rowMeta, items };
 }
