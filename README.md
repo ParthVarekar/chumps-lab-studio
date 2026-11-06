@@ -46,7 +46,8 @@
 
 - **Edits the raw recording for you.** Transcript + OCR + screen-motion analysis drive zooms, UI labels, titles, kinetic words, moods, memes and sound effects, timed to the speech and to what moves on screen.
 - **Point at it, and it's done.** Every effect is placed by drawing on the picture: drag a box to zoom, highlight, blur or spotlight; drag an arrow from tail to tip; drop a tile on the preview.
-- **A real editor.** Timeline with drag, trim, snap, split, lock and undo; on-canvas handles; an inspector for every setting; transitions and karaoke / pop / subtitle captions from the transcript.
+- **A real editor.** Timeline with drag, trim, snap, split, lock and undo; on-canvas handles; an inspector for every setting; ten transitions (flash, dip, wipe, iris, clock, slats, whip blur…) and karaoke / pop / subtitle captions from the transcript.
+- **Linked items.** Group a zoom with its spotlight, highlight or sound and they move, copy, lock and delete as one. *Zoom + spotlight* is a single drag. Switch anything off without deleting it, drop markers, ripple-delete to close a gap, copy and paste at the playhead.
 - **AI-designed animated elements.** Ask for *"a speedometer at 78%"* or *"a waving plant"*. The model writes a safe, checked spec (never code), chooses its own settings (needle time, flicker rate, sway…), and fits it to the colours and text around it. Tune it with sliders or in words.
 - **An assistant that edits.** *"zoom into Test Condition and add a whoosh"*. Every change arrives as a draft you Apply or Discard; the AI uses the same command layer you do.
 - **Free and local.** Free cloud models first, then Bonsai 2 27B on your own GPU (~40 tokens/s on 8 GB). Kokoro TTS, CC0 sound library, CC-BY animated stickers.
@@ -71,6 +72,17 @@
     <td><sub><b>Assistant.</b> A request becomes a previewed draft: Apply or Discard.</sub></td>
   </tr>
 </table>
+
+## Shortcuts
+
+| Key | Does | Key | Does |
+|---|---|---|---|
+| Space · ← → | play · frame step (Shift: 1 s) | Ctrl+G / Ctrl+Shift+G | group / ungroup |
+| S · [ · ] | split · set start · set end at the playhead | E | disable / enable |
+| Ctrl+C / Ctrl+V | copy · paste at the playhead | M · Shift+M | add · remove marker |
+| Ctrl+D · Ctrl+A | duplicate · select all | Ctrl+← / → | previous / next marker |
+| Del · Shift+Del | delete · ripple delete | Alt+← / → | nudge (Shift: 1 s) |
+| L | lock | / | ask the assistant |
 
 ## How it works
 
