@@ -1,5 +1,5 @@
 import { Timeline as XTimeline, type TimelineState } from '@xzdarcy/react-timeline-editor';
-import { Copy, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
+import { Copy, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { fmt, useStudio } from '../store';
@@ -71,6 +71,7 @@ export const TimelinePanel: React.FC = () => {
 				<button title="Lock / unlock (L)" disabled={!sel.length} onClick={() => run(sel.map((id) => ({ op: 'lock' as const, id, locked: !lockedAll })))}>{lockedAll ? <Unlock size={15} /> : <Lock size={15} />} {lockedAll ? 'Unlock' : 'Lock'}</button>
 				<button title="Group the selected items so they move, copy, lock and delete together (Ctrl+G)" disabled={sel.length < 2 || sel.every((id) => items[id]?.group && items[id]?.group === items[sel[0]]?.group)} onClick={() => run([{ op: 'group', ids: sel }])}><Link2 size={15} /> Group</button>
 				<button title="Release the selected group (Ctrl+Shift+G)" disabled={!sel.some((id) => items[id]?.group)} onClick={() => run([{ op: 'ungroup', id: sel.find((id) => items[id]?.group)! }])}><Link2Off size={15} /> Ungroup</button>
+				<button title="Turn the selected items off or on without deleting them (E)" disabled={!sel.length} onClick={() => run(oneOfEach(real!, sel).map((id) => ({ op: 'set_enabled' as const, id, enabled: !!items[id]?.disabled })))}>{sel.length && sel.every((id) => items[id]?.disabled) ? <Eye size={15} /> : <EyeOff size={15} />} {sel.length && sel.every((id) => items[id]?.disabled) ? 'Enable' : 'Disable'}</button>
 				<span className="sep" />
 				<button className={snap ? 'on' : ''} title="Snap to other items' edges" onClick={() => setSnap(!snap)}><Magnet size={15} /> Snap</button>
 				<span className="spacer" />
@@ -116,7 +117,7 @@ export const TimelinePanel: React.FC = () => {
 								if (action.id === 'voice') return <div className="clip clip-voice"><Waveform peaks={peaks} duration={duration} /></div>;
 								if (action.id.startsWith('beat:')) return <div className="clip clip-beat">{action.id.slice(5)}</div>;
 								const m = items[action.id];
-								const cls = ['clip', `clip-${action.effectId}`, selection.includes(action.id) ? 'selected' : '', m?.locked ? 'locked' : '', m?.group ? `grouped g-${hue(m.group)}` : '', m?.origin === 'user' ? 'mine' : '', draftIds.has(action.id) ? 'ghost' : ''].filter(Boolean).join(' ');
+								const cls = ['clip', `clip-${action.effectId}`, selection.includes(action.id) ? 'selected' : '', m?.locked ? 'locked' : '', m?.disabled ? 'off' : '', m?.group ? `grouped g-${hue(m.group)}` : '', m?.origin === 'user' ? 'mine' : '', draftIds.has(action.id) ? 'ghost' : ''].filter(Boolean).join(' ');
 								return <div className={cls} title={m?.group ? `Grouped (${m.group}): moves, copies and deletes with its group` : undefined}>{m?.locked ? <Lock size={10} /> : null}{m?.group ? <Link2 size={10} /> : null}<span>{m?.label ?? action.effectId}</span></div>;
 							}}
 							style={{ width: '100%', height: '100%', background: 'transparent' }}

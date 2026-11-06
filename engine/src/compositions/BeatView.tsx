@@ -79,11 +79,12 @@ export const BeatView: React.FC<{ beat: Beat }> = ({ beat }) => {
 	const frame = useCurrentFrame();
 	const { fps, width: W, height: H } = useVideoConfig();
 	const { look } = useStudio();
-	const cam = cameraAt(beat.camera, frame, fps, W, H);
-	const mood = moodEffects(beat.moods, frame, fps, W, beat.id);
+	const live = <T extends { meta: { disabled?: boolean } }>(xs: T[]) => xs.filter((x) => !x.meta.disabled);
+	const cam = cameraAt(live(beat.camera), frame, fps, W, H);
+	const mood = moodEffects(live(beat.moods), frame, fps, W, beat.id);
 	const byZ = (a: Layer, b: Layer) => a.z - b.z;
-	const stage = beat.layers.filter((l) => l.space === 'stage').sort(byZ);
-	const screen = beat.layers.filter((l) => l.space === 'screen').sort(byZ);
+	const stage = live(beat.layers).filter((l) => l.space === 'stage').sort(byZ);
+	const screen = live(beat.layers).filter((l) => l.space === 'screen').sort(byZ);
 
 	return (
 		<AbsoluteFill style={{ backgroundColor: look.background, overflow: 'hidden' }}>

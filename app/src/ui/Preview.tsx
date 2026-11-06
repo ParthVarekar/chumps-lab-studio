@@ -91,7 +91,7 @@ export const Preview: React.FC = () => {
 	const cam = useMemo(() => {
 		if (!edd) return { scale: 1, view: { x: 0, y: 0, w: 100, h: 100 } };
 		const b = edd.beats.find((x) => time >= x.start && time < x.end) ?? edd.beats[0];
-		const c = cameraAt(b.camera.map((m) => ({ ...m, at: m.at })), Math.round((time - b.start) * fps), fps, edd.format.width, edd.format.height);
+		const c = cameraAt(b.camera.filter((m) => !m.meta.disabled).map((m) => ({ ...m, at: m.at })), Math.round((time - b.start) * fps), fps, edd.format.width, edd.format.height);
 		return { scale: c.scale, view: c.view };
 	}, [edd, time, fps]);
 

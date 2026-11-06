@@ -27,6 +27,7 @@ export const NodeMeta = z.object({
 	origin: Origin.default('ai'),
 	locked: z.boolean().default(false).describe('AI passes must never modify a locked node'),
 	reason: z.string().optional().describe('one sentence: why this decision exists'),
+	disabled: z.boolean().optional().describe('kept in the edit but not rendered or heard (like turning a clip off in an NLE)'),
 	group: z.string().optional().describe('link tag: items sharing it move, retime, copy, lock and delete together'),
 });
 export type NodeMeta = z.infer<typeof NodeMeta>;

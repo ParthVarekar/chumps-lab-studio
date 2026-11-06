@@ -72,4 +72,11 @@ assert.equal(withGroup(ug.edd, gm.notes[0].id!).length, 1);
 const mk = run(edd0, { op: 'add_layer', component: 'Title', at: 5, props: { text: 'A' } }, { op: 'add_sfx', src: 'media/sfx/x.wav', at: 5 });
 const mg = run(mk.edd, { op: 'group', ids: [mk.notes[0].id!, mk.notes[1].id!] });
 assert.equal(withGroup(mg.edd, mk.notes[0].id!).length, 2);
+// 8. disable / enable: kept in the edit, not rendered; a group switches together
+const de = run(edd0, { op: 'add_zoom', at: 30, until: 33, to: { x: 10, y: 10, w: 40, h: 40 }, group: 'gd' }, { op: 'add_layer', component: 'Spotlight', at: 30, until: 34, group: 'gd' });
+const off = run(de.edd, { op: 'set_enabled', id: de.notes[0].id!, enabled: false });
+assert.equal(off.edd.beats.flatMap((b) => [...b.camera, ...b.layers]).filter((x) => x.meta.group === 'gd' && x.meta.disabled).length, 2, 'both group members are off');
+assert.ok(find(off.edd, de.notes[0].id!), 'a disabled item is still in the edit');
+const on = run(off.edd, { op: 'set_enabled', id: de.notes[0].id!, enabled: true });
+assert.equal(on.edd.beats.flatMap((b) => [...b.camera, ...b.layers]).filter((x) => x.meta.disabled).length, 0, 'enabling clears the flag');
 console.log('ops: all checks passed');

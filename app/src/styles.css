@@ -248,3 +248,7 @@ button.wide { width: 100%; justify-content: center; }
 .clip.grouped svg { margin-right: 3px; flex: none; }
 .clip.g-0 { --grp: #7aa2ff; } .clip.g-1 { --grp: #ff8a5c; } .clip.g-2 { --grp: #5fd6a4; }
 .clip.g-3 { --grp: #e07bff; } .clip.g-4 { --grp: #ffd24a; } .clip.g-5 { --grp: #4cd3e0; }
+
+/* disabled items stay on the timeline but are dimmed and struck through */
+.clip.off { opacity: 0.38; filter: grayscale(0.8); }
+.clip.off span { text-decoration: line-through; }

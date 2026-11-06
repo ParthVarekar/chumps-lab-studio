@@ -72,6 +72,7 @@ export const Op = z.discriminatedUnion('op', [
 	z.object({ op: z.literal('duplicate'), id: Id, at: z.number().optional().describe('global start of the copy (default: right after the original)') }),
 	z.object({ op: z.literal('split'), id: Id, at: z.number() }),
 	z.object({ op: z.literal('lock'), id: Id, locked: z.boolean() }),
+	z.object({ op: z.literal('set_enabled'), id: Id, enabled: z.boolean().describe('false keeps the item in the edit but stops it rendering / sounding; a grouped item switches its whole group') }),
 	z.object({ op: z.literal('group'), ids: z.array(Id).min(2).describe('items to link (zoom, effects, sounds): afterwards they move, copy, lock and delete as one'), name: z.string().optional() }),
 	z.object({ op: z.literal('ungroup'), id: Id.describe('any member: the whole group is released') }),
 ]);
@@ -244,7 +245,7 @@ function meta(author: 'user' | 'ai', why?: string, group?: string) {
 type Mood = Beat['moods'][number];
 type Cam = Beat['camera'][number];
 
-export function metaOfItem(edd: Edd, id: string): { locked: boolean; group?: string } | null {
+export function metaOfItem(edd: Edd, id: string): { locked: boolean; group?: string; disabled?: boolean } | null {
 	const f = find(edd, id);
 	if (!f) return null;
 	if (f.kind === 'layer') return f.layer!.meta;
@@ -653,6 +654,18 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 			else if (f.kind === 'mood') f.beat!.moods[f.index!].meta.locked = op.locked;
 			else f.sfx!.meta.locked = op.locked;
 			return { ok: true, op, id: op.id, message: `${op.locked ? 'locked' : 'unlocked'} ${op.id}` };
+		}
+		case 'set_enabled': {
+			const crew = withGroup(edd, op.id);
+			if (!crew.length || !find(edd, op.id)) throw new Error(`no item ${op.id}`);
+			assertUnlocked(edd, crew);
+			for (const id of crew) {
+				const f = find(edd, id)!;
+				const apply = (m: { disabled?: boolean }) => { if (op.enabled) delete m.disabled; else m.disabled = true; };
+				if (f.kind === 'layer') segments(edd, id).forEach((x) => apply(x.layer.meta));
+				else apply(metaOfItem(edd, id) as { disabled?: boolean });
+			}
+			return { ok: true, op, id: op.id, message: `${op.enabled ? 'enabled' : 'disabled'} ${crew.length} item(s)` };
 		}
 		case 'group': {
 			const ids = Array.from(new Set(op.ids));

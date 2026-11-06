@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { camId, find, moodId, oneOfEach, spanOf } from '../shared/ops';
+import { camId, find, metaOfItem, moodId, oneOfEach, spanOf } from '../shared/ops';
 import { useStudio } from './store';
 import { Assistant } from './ui/Assistant';
 import { Inspector } from './ui/Inspector';
@@ -86,6 +86,10 @@ function useShortcuts() {
 				e.preventDefault();
 				if (e.shiftKey) void st.run([{ op: 'ungroup', id: sel[0] }]);
 				else if (sel.length > 1) void st.run([{ op: 'group', ids: sel }]);
+			}
+			else if (e.key.toLowerCase() === 'e' && sel.length && !mod) {
+				const off = sel.every((id) => (metaOfItem(st.edd!, id) as { disabled?: boolean } | null)?.disabled);
+				void st.run(oneOfEach(st.edd, sel).map((id) => ({ op: 'set_enabled' as const, id, enabled: off })));
 			}
 			else if (e.key.toLowerCase() === 's' && sel.length === 1 && !e.ctrlKey) void st.run([{ op: 'split', id: sel[0], at: st.time }]);
 			else if (e.key.toLowerCase() === 'l' && sel.length) {

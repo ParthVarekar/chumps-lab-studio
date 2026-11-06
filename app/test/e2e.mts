@@ -291,6 +291,15 @@ await sleep(900);
 const nudged = (await doc()).beats.flatMap((b: any) => b.layers.map((l: any) => ({ b, l }))).find((x: any) => x.l.id === pasted[0].l.id);
 ok('Alt+Shift+→ nudges the selection by one second', nudged && Math.abs(nudged.b.start + nudged.l.enter.at - 101) < 0.2);
 
+// 9i. Disable / enable with E: the item stays, but is switched off
+await page.keyboard.press('e');
+await sleep(900);
+const offItem = (await doc()).beats.flatMap((b: any) => b.layers).find((l: any) => l.id === pasted[0].l.id);
+ok('E switches the selected item off (kept in the edit)', offItem?.meta?.disabled === true && (await page.$$('.clip.off')).length >= 1);
+await page.keyboard.press('e');
+await sleep(900);
+ok('E again switches it back on', !(await doc()).beats.flatMap((b: any) => b.layers).find((l: any) => l.id === pasted[0].l.id)?.meta?.disabled);
+
 // 10. Another client (the AI via the API) changes the doc: the open editor updates live
 const rev0 = (await api('/api/open', { dir: DIR })).rev;
 const before2 = (await page.$$('.clip')).length;

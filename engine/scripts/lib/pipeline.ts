@@ -175,7 +175,7 @@ export const renderEdd = async (opts: RenderOptions): Promise<RenderReport> => {
 		ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', silent]);
 		const delayMs = Math.round(voice.start * 1000);
 		// Sound effects are mixed in at volumes relative to the narration, and the mix is normalised to -14 LUFS once. Missing files are skipped with a warning, not fatal.
-		const sfx = edd.audio.sfx.filter((c) => {
+		const sfx = edd.audio.sfx.filter((c) => !c.meta.disabled).filter((c) => {
 			const ok = existsSync(join(projectDir, c.src));
 			if (!ok) console.warn(`sfx ${c.id}: ${c.src} not found, skipped`);
 			return ok;

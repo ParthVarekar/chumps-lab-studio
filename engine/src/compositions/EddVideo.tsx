@@ -39,7 +39,7 @@ const SfxClip: React.FC<{ id: string; src: string; at: number; volume: number }>
 
 const Sfx: React.FC<{ edd: Edd }> = ({ edd }) => (
 	<>
-		{edd.audio.sfx.map((c) => (
+		{edd.audio.sfx.filter((c) => !c.meta.disabled).map((c) => (
 			<SfxClip key={c.id} id={c.id} src={c.src} at={c.at} volume={c.volume} />
 		))}
 	</>
