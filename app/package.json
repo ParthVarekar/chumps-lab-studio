@@ -1,0 +1,41 @@
+{
+  "name": "@cls/app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chumps Lab Studio desktop app (Electron + Remotion Player + react-timeline-editor)",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "start": "vite build && electron .",
+    "web": "vite build && tsx server/main.ts",
+    "typecheck": "tsc --noEmit",
+    "serve": "tsx server/main.ts",
+    "test": "tsx test/ops.test.ts"
+  },
+  "dependencies": {
+    "@cls/engine": "0.1.0",
+    "@remotion/player": "4.0.541",
+    "@xzdarcy/react-timeline-editor": "1.0.0",
+    "@xzdarcy/timeline-engine": "1.0.0",
+    "fast-json-patch": "3.1.1",
+    "lucide-react": "^1.70.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-moveable": "^0.56.0",
+    "react-resizable-panels": "^4.19.0",
+    "remotion": "4.0.541",
+    "serve-handler": "6.1.7",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "electron": "45.2.3",
+    "puppeteer-core": "^25.16.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3",
+    "vite": "8.3.6"
+  }
+}

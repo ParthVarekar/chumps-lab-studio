@@ -1,0 +1,26 @@
+# Python
+sidecar/.venv
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+out/
+
+# Secrets and local settings
+.env
+.env.*
+
+# Media and caches never belong in the repo (they live on D:\ChumpsLabStudio)
+*.mp4
+*.wav
+*.mkv
+
+# Local tooling and machine-specific settings
+.claude/
+.npmrc
+*.log
+
+# README media is the exception to the no-media rule
+!docs/assets/*.mp4

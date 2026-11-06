@@ -1,0 +1,12 @@
+{
+  "name": "chumps-lab-studio",
+  "private": true,
+  "description": "Personal AI-assisted video editing studio",
+  "workspaces": [
+    "engine",
+    "app"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

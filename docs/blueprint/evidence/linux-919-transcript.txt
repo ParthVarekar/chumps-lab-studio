@@ -1,0 +1,45 @@
+[9:19] So, what was happening was that at first I thought Zorin was fully installed, but what I didn't notice was that on the desktop, the Linux installer button was still there, which meant that
+[9:29] I still didn't have Linux completely installed. So, it turned out VMware was still booting from the ISO itself, so I was basically stuck in the installer again. And after that was resolved, I just restarted
+[9:40] the ISO after unmounting the Linux ISO from the virtual machine. And after that, there was a network issue where some of the packages weren't installing properly. It turned out it was an issue between TCP and
+[9:50] UDP haggling for control. So, after some 10 minutes or so, that also resolved by itself. And after that, basically everything was working. Okay. So, now we will be
+[10:01] trying to explore Linux as we have already completed the installation part. There are some few things that I chatted GPT basically about what you should try like to get yourself familiar with Zorin after you have installed
+[10:11] it already. So, first one was to install an app from the software center. It Zorin has this software store and you can basically install all the Linux certified programs
+[10:22] like safe programs from here. So, you can search games here. What I'm going to try to install is is like the Photoshop for open source. It works specifically well on Linux. We'll try
+[10:32] to install it from here. I'll try customization first. So, if you come to here, uh then you can basically see in Zorin appearance, you can do a lot of customization. You have this layouts option here.
+[10:43] As you can see, you can set it to like Windows 11 layout or Windows 10 or this or this, basically whatever you like. But, I'm currently going with this one. Okay, this is the theme. You can select the accent
+[10:53] color. Like you can see here that it's changing color. I'll maybe go with blue. Blue looks nice. Maybe purple. Purple looks pretty nice too. We'll go with dark mode. And
+[11:03] in effects, this is the jelly mode which I've already turned on. And what this does is when you're opening your windows and closing them, it basically gives them this effect. You can turn it off if you are like low on RAM, but
+[11:14] it is nice. And this is desktop cube basically when you're changing from here to here. Rather than that appearance, it gives this this. And then there are adjustments. I
+[11:24] can zoom key. I I'm not going to do any of this. Other than that, basically fonts do a lot for your operating system. Basically, choose a very nice font and it will look nice. I'll
+[11:35] let everything else be the same. Okay, with that we are done here. And other things you can do is basically in this software store itself. [snorts] You can install more fonts and codex that
+[11:45] will make basically everything look better. So, first I'll try installing from here. I'll install. I think I have already installed, but I'll
+[11:55] check if it appears here. Okay, it doesn't. Maybe I'll install it again. Maybe I did not install it the first time. While this is installing, you are going to try to install another thing, that is VS Code. So, to install it we need to
+[12:06] run this command. sudo snap install code dash dash Okay,
+[12:17] with that we are installing VS Code. Okay, so both of the things have now been installed like VS Code too and too. So, first we'll try to see
+[12:27] how is like. So, this is and we can create new images. So, I'll create a new image. I'll set this to 1080 and I'll just save this. This
+[12:38] is basically a 1080 resolution image and I can basically edit it. How does this look? I've added like something. Is this Is this a Okay, this is a brush. Wow.
+[12:50] This little brush. I can I can add things here. This is a rectangle. Okay,
+[13:01] I can only draw in this section. I don't know why that is. Oh, it's a sun. We can add a sun here. Can I not increase the size of this sun? Maybe there is some tool for that. Okay, we'll we'll explore later.
+[13:12] With that, is done and here you can see VS Code is also installed and we'll see where VS Code is. This here it is. Now that
+[13:23] we have opened it. Okay, finally we are in VS Code. I'll just skip it for now. So, now we have got VS code two. Two of the things that I will use, I have got them.
+[13:33] That is to make a script. I need to make a script. A script is basically a file that has a lot of commands in it. And when you run a script, all the commands in it run too. So,
+[13:43] basically you can make a script to close your computer. It has the commands like kill all processes, save all processes, then close computer, like that. Or you can make a reboot script that basically, when
+[13:54] you run that script and if you're dual booting, then maybe it will not turn on Windows, instead it will turn on Linux or vice versa as you have chosen. Basically, scripts are useful for that. Now, we'll try to make
+[14:04] a new script. We'll make a new directory. This is basically the command to make a new directory. This is make direct. And we'll just I'll be copy pasting everything since I have very bad typing currently.
+[14:15] I don't know why. We have made it. Let us search it up. Yeah, we have made We have made scripts in home directory. I think everything
+[14:26] is coming into here. So, the next thing we're going to do is open the scripts. Nano is basically the command to open a script file. And we are going to do hello.sh. The
+[14:36] script is basically to to say hello from Linux. Let's make this. We are in this, okay, now. And we will do another thing is we will be pasting this
+[14:47] into the file. I can right click also. After that, we have to save and exit. Control O. Enter. Control X. And that we have closed the file. So, now
+[14:57] we'll make it an executable. That is a script file. We'll take this. We'll paste it here. Okay, so with that we have made the script and we are going to open
+[15:08] this in VS code. In this home, there is this scripts. And this is the hello.sh file. So, we'll open this folder in VS code itself. Open folder and home, scripts.
+[15:19] We'll select this, okay? As you can see, we have this hello SSH here and it has all the things that we have added previously. You can basically make this file here itself in VS Code, too, but since
+[15:30] I wanted to learn how to do it, I did like that. But, you can just make a new file here in the scripts folder itself and name it hello.sh and write in that all this stuff and that will also work. So,
+[15:41] next part is we are going to run this file and to do that, this is the command to run it. I I think I can do it in terminal here, too. It
+[15:51] worked. Like you can see here, hello.sh it has said. We can also like run this command, like this one, in the other terminal in here. I'll
+[16:02] paste this here. Yeah, that is correct and you can see that here also the answer is occurring. So, you can make scripts like this and why I wanted to show
+[16:13] scripts first of all is that scripts are very important when you're doing Linux. Like, if you're making a executable file, then you need to know how to make scripts. All the things, like maybe even
+[16:23] to start the app, like to make a shortcut, [snorts] like if you're in Arch Linux, to make a shortcut, you need to make a script. So, scripts are very useful. With that, I think we are done with our
+[16:33] exploration. Like, the icing and all that wise, I don't think I'm going to explore as much and after all the failed installs, virtual machine issues, driver
+[16:44] problems and way too much Googling than I'd like to admit, I did finally get Zorin OS working. So, yeah, there's that. And honestly, Linux was a lot less
+[16:54] scary than I expected. There's still a lot I don't know, but I can see why people end up falling in love with uh Zorin or Linux for that. So, let's conclude here. We'll meet in another video. >> Bye-bye.
+[17:09] >> [music]

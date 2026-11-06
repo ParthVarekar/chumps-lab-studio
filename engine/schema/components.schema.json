@@ -1,0 +1,581 @@
+{
+ "library": "cls-motion@0.2.0",
+ "components": {
+  "Title": {
+   "description": "Big section title (display font), e.g. slides in with motion blur",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string",
+      "minLength": 1
+     },
+     "variant": {
+      "default": "title",
+      "type": "string",
+      "enum": [
+       "title",
+       "word",
+       "header",
+       "label"
+      ]
+     },
+     "align": {
+      "default": "center",
+      "type": "string",
+      "enum": [
+       "left",
+       "center",
+       "right"
+      ]
+     },
+     "color": {
+      "default": "text",
+      "description": "'text' | 'accent' | 'accent2' or a CSS colour",
+      "type": "string"
+     },
+     "uppercase": {
+      "default": false,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "text"
+    ]
+   }
+  },
+  "KineticWord": {
+   "description": "A single spoken word as big centred type",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string",
+      "minLength": 1
+     },
+     "variant": {
+      "default": "title",
+      "type": "string",
+      "enum": [
+       "title",
+       "word",
+       "header",
+       "label"
+      ]
+     },
+     "align": {
+      "default": "center",
+      "type": "string",
+      "enum": [
+       "left",
+       "center",
+       "right"
+      ]
+     },
+     "color": {
+      "default": "text",
+      "description": "'text' | 'accent' | 'accent2' or a CSS colour",
+      "type": "string"
+     },
+     "uppercase": {
+      "default": false,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "text"
+    ]
+   }
+  },
+  "Header": {
+   "description": "Small persistent step header in the accent colour, e.g. top-left",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string",
+      "minLength": 1
+     },
+     "variant": {
+      "default": "title",
+      "type": "string",
+      "enum": [
+       "title",
+       "word",
+       "header",
+       "label"
+      ]
+     },
+     "align": {
+      "default": "center",
+      "type": "string",
+      "enum": [
+       "left",
+       "center",
+       "right"
+      ]
+     },
+     "color": {
+      "default": "text",
+      "description": "'text' | 'accent' | 'accent2' or a CSS colour",
+      "type": "string"
+     },
+     "uppercase": {
+      "default": false,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "text"
+    ]
+   }
+  },
+  "PopImage": {
+   "description": "Logo / icon / photo / cut-out that illustrates the spoken word",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "src": {
+      "type": "string",
+      "description": "project-relative image path (png/jpg/svg/webp)"
+     },
+     "fit": {
+      "default": "contain",
+      "type": "string",
+      "enum": [
+       "contain",
+       "cover"
+      ]
+     },
+     "shadow": {
+      "default": false,
+      "type": "boolean"
+     },
+     "rounded": {
+      "default": false,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "src"
+    ]
+   }
+  },
+  "EvidenceCard": {
+   "description": "Screenshot of a real source on a card, with a highlight sweep on the quoted line",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "src": {
+      "type": "string",
+      "description": "screenshot of the source being discussed"
+     },
+     "highlight": {
+      "description": "region of the image to highlight, % of the image",
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "number",
+        "minimum": -50,
+        "maximum": 150,
+        "description": "left edge, % of frame width"
+       },
+       "y": {
+        "type": "number",
+        "minimum": -50,
+        "maximum": 150,
+        "description": "top edge, % of frame height"
+       },
+       "w": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 200,
+        "description": "width, % of frame width"
+       },
+       "h": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 200,
+        "description": "height, % of frame height"
+       }
+      },
+      "required": [
+       "x",
+       "y",
+       "w",
+       "h"
+      ]
+     },
+     "highlightDelay": {
+      "default": 0.4,
+      "description": "seconds after the card lands",
+      "type": "number",
+      "minimum": 0
+     },
+     "highlightColor": {
+      "default": "accent",
+      "type": "string"
+     }
+    },
+    "required": [
+     "src"
+    ]
+   }
+  },
+  "MemeCut": {
+   "description": "Full-frame meme card, usually a hard cut on a punchline",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "src": {
+      "type": "string"
+     },
+     "fit": {
+      "default": "cover",
+      "type": "string",
+      "enum": [
+       "contain",
+       "cover"
+      ]
+     },
+     "background": {
+      "default": "#000000",
+      "type": "string"
+     }
+    },
+    "required": [
+     "src"
+    ]
+   }
+  },
+  "UILabel": {
+   "description": "Label placed on the UI element being explained, with an outline around it",
+   "space": "stage",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string",
+      "minLength": 1
+     },
+     "target": {
+      "type": "object",
+      "properties": {
+       "x": {
+        "type": "number",
+        "minimum": -50,
+        "maximum": 150,
+        "description": "left edge, % of frame width"
+       },
+       "y": {
+        "type": "number",
+        "minimum": -50,
+        "maximum": 150,
+        "description": "top edge, % of frame height"
+       },
+       "w": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 200,
+        "description": "width, % of frame width"
+       },
+       "h": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 200,
+        "description": "height, % of frame height"
+       }
+      },
+      "required": [
+       "x",
+       "y",
+       "w",
+       "h"
+      ],
+      "description": "the UI element being explained, in stage %"
+     },
+     "color": {
+      "default": "text",
+      "type": "string"
+     }
+    },
+    "required": [
+     "text",
+     "target"
+    ]
+   }
+  },
+  "ColorChip": {
+   "description": "Colour swatch when a colour is named",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "color": {
+      "type": "string"
+     },
+     "label": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "color"
+    ]
+   }
+  },
+  "CodeBlock": {
+   "description": "Syntax-highlighted code on a dark panel; lines appear, key lines get highlighted",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "code": {
+      "type": "string",
+      "description": "the code; newlines separate lines"
+     },
+     "language": {
+      "default": "text",
+      "type": "string"
+     },
+     "highlightLines": {
+      "default": [],
+      "description": "1-based lines to highlight",
+      "type": "array",
+      "items": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 9007199254740991
+      }
+     },
+     "highlightAt": {
+      "default": 0.8,
+      "description": "seconds after entrance to highlight",
+      "type": "number",
+      "minimum": 0
+     },
+     "reveal": {
+      "default": "lines",
+      "type": "string",
+      "enum": [
+       "all",
+       "lines",
+       "typewriter"
+      ]
+     },
+     "title": {
+      "type": "string"
+     },
+     "panel": {
+      "default": true,
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "code"
+    ]
+   }
+  },
+  "Terminal": {
+   "description": "A terminal where the command types out and the output appears",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "prompt": {
+      "default": "$",
+      "type": "string"
+     },
+     "command": {
+      "type": "string"
+     },
+     "output": {
+      "default": [],
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "charsPerSecond": {
+      "default": 28,
+      "type": "number",
+      "exclusiveMinimum": 0
+     },
+     "title": {
+      "default": "Terminal",
+      "type": "string"
+     }
+    },
+    "required": [
+     "command"
+    ]
+   }
+  },
+  "BarChart": {
+   "description": "Animated bar chart comparison (benchmarks, prices, counts) with a highlighted bar",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "bars": {
+      "minItems": 1,
+      "maxItems": 12,
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "label": {
+         "type": "string"
+        },
+        "value": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "label",
+        "value"
+       ]
+      }
+     },
+     "unit": {
+      "default": "",
+      "type": "string"
+     },
+     "decimals": {
+      "default": 0,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+     },
+     "highlight": {
+      "description": "label of the bar to emphasise",
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "orientation": {
+      "default": "horizontal",
+      "type": "string",
+      "enum": [
+       "vertical",
+       "horizontal"
+      ]
+     }
+    },
+    "required": [
+     "bars"
+    ]
+   }
+  },
+  "Gauge": {
+   "description": "Speedometer-style gauge whose needle swings to a value (performance, usage, temperature)",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "value": {
+      "type": "number"
+     },
+     "max": {
+      "type": "number",
+      "exclusiveMinimum": 0
+     },
+     "min": {
+      "default": 0,
+      "type": "number"
+     },
+     "label": {
+      "default": "",
+      "type": "string"
+     },
+     "unit": {
+      "default": "",
+      "type": "string"
+     },
+     "redlineFrom": {
+      "description": "values above this are drawn in the warning colour",
+      "type": "number"
+     },
+     "decimals": {
+      "default": 0,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+     }
+    },
+    "required": [
+     "value",
+     "max"
+    ]
+   }
+  },
+  "NeuralNet": {
+   "description": "Neural network diagram that builds layer by layer, then activation pulses flow through it",
+   "space": "screen",
+   "props": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+     "layers": {
+      "default": [
+       4,
+       6,
+       6,
+       3
+      ],
+      "description": "nodes per layer",
+      "minItems": 2,
+      "maxItems": 7,
+      "type": "array",
+      "items": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 12
+      }
+     },
+     "labels": {
+      "default": [],
+      "description": "optional label under each layer, e.g. [\"input\", \"hidden\", \"output\"]",
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "pulses": {
+      "default": 2,
+      "description": "activation waves travelling input → output",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6
+     },
+     "seed": {
+      "default": "nn",
+      "type": "string"
+     },
+     "panel": {
+      "default": true,
+      "type": "boolean"
+     }
+    }
+   }
+  }
+ }
+}

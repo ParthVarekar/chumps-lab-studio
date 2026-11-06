@@ -1,0 +1,32 @@
+[project]
+name = "cls-sidecar"
+version = "0.0.1"
+description = "Chumps Lab Studio ML sidecar: transcription, analysis, embeddings, model gateway"
+requires-python = "==3.12.*"
+dependencies = [
+  "torch==2.14.1",
+  "numpy>=2.1",
+  "onnx-asr[hub]>=0.12",
+  "onnxruntime-gpu>=1.31",
+  "httpx>=0.28",
+  "pydantic>=2.10",
+  "pillow>=11",
+  "psutil>=7",
+  "rapidocr>=3.10",
+]
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv]
+# Keep every heavy download off the C: drive (C: has very little free space).
+cache-dir = "D:/ChumpsLabStudio/cache/uv"
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }

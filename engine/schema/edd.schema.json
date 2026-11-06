@@ -1,0 +1,685 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "type": "object",
+ "properties": {
+  "version": {
+   "type": "number",
+   "const": 1
+  },
+  "componentLibrary": {
+   "type": "string",
+   "description": "e.g. \"cls-motion@0.1.0\" — pinned for reproducible renders"
+  },
+  "format": {
+   "type": "object",
+   "properties": {
+    "width": {
+     "type": "integer",
+     "minimum": 16,
+     "maximum": 7680
+    },
+    "height": {
+     "type": "integer",
+     "minimum": 16,
+     "maximum": 4320
+    },
+    "fps": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 120
+    }
+   },
+   "required": [
+    "width",
+    "height",
+    "fps"
+   ]
+  },
+  "look": {
+   "default": "footage-first",
+   "description": "name of a look (palette, type, texture)",
+   "type": "string"
+  },
+  "audio": {
+   "type": "object",
+   "properties": {
+    "voice": {
+     "type": "object",
+     "properties": {
+      "src": {
+       "type": "string"
+      },
+      "start": {
+       "default": 0,
+       "description": "position on the global timeline, seconds",
+       "type": "number",
+       "minimum": 0
+      },
+      "from": {
+       "default": 0,
+       "description": "seconds into the source file",
+       "type": "number",
+       "minimum": 0
+      },
+      "volume": {
+       "default": 1,
+       "type": "number",
+       "minimum": 0,
+       "maximum": 2
+      }
+     },
+     "required": [
+      "src"
+     ]
+    },
+    "music": {
+     "default": [],
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "src": {
+        "type": "string"
+       },
+       "start": {
+        "default": 0,
+        "description": "position on the global timeline, seconds",
+        "type": "number",
+        "minimum": 0
+       },
+       "from": {
+        "default": 0,
+        "description": "seconds into the source file",
+        "type": "number",
+        "minimum": 0
+       },
+       "volume": {
+        "default": 1,
+        "type": "number",
+        "minimum": 0,
+        "maximum": 2
+       }
+      },
+      "required": [
+       "src"
+      ]
+     }
+    },
+    "sfx": {
+     "default": [],
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "src": {
+        "type": "string",
+        "description": "file under the project folder, e.g. media/sfx/swish-3.wav"
+       },
+       "at": {
+        "type": "number",
+        "minimum": 0,
+        "description": "position on the global timeline, seconds"
+       },
+       "volume": {
+        "default": 0.5,
+        "description": "relative to the narration, which is normalised to -14 LUFS",
+        "type": "number",
+        "minimum": 0,
+        "maximum": 2
+       },
+       "role": {
+        "description": "what it is for: whoosh, click, key, pop, meme, …",
+        "type": "string"
+       },
+       "meta": {
+        "default": {
+         "origin": "ai",
+         "locked": false
+        },
+        "type": "object",
+        "properties": {
+         "origin": {
+          "default": "ai",
+          "type": "string",
+          "enum": [
+           "ai",
+           "user",
+           "template"
+          ]
+         },
+         "locked": {
+          "default": false,
+          "description": "AI passes must never modify a locked node",
+          "type": "boolean"
+         },
+         "reason": {
+          "description": "one sentence: why this decision exists",
+          "type": "string"
+         }
+        }
+       }
+      },
+      "required": [
+       "id",
+       "src",
+       "at"
+      ]
+     }
+    }
+   }
+  },
+  "beats": {
+   "minItems": 1,
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "start": {
+      "type": "number",
+      "minimum": 0,
+      "description": "seconds on the global timeline"
+     },
+     "end": {
+      "type": "number",
+      "exclusiveMinimum": 0
+     },
+     "narration": {
+      "type": "string"
+     },
+     "intent": {
+      "description": "what the viewer should understand",
+      "type": "string"
+     },
+     "pacing": {
+      "default": "standard",
+      "type": "string",
+      "enum": [
+       "dense",
+       "standard",
+       "screen-carries"
+      ]
+     },
+     "base": {
+      "oneOf": [
+       {
+        "type": "object",
+        "properties": {
+         "kind": {
+          "type": "string",
+          "const": "video"
+         },
+         "src": {
+          "type": "string",
+          "description": "project-relative path"
+         },
+         "from": {
+          "default": 0,
+          "description": "seconds into the source file where this beat starts",
+          "type": "number",
+          "minimum": 0
+         },
+         "fit": {
+          "default": "cover",
+          "type": "string",
+          "enum": [
+           "cover",
+           "contain"
+          ]
+         }
+        },
+        "required": [
+         "kind",
+         "src"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "kind": {
+          "type": "string",
+          "const": "image"
+         },
+         "src": {
+          "type": "string"
+         },
+         "fit": {
+          "default": "cover",
+          "type": "string",
+          "enum": [
+           "cover",
+           "contain"
+          ]
+         }
+        },
+        "required": [
+         "kind",
+         "src"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "kind": {
+          "type": "string",
+          "const": "color"
+         },
+         "color": {
+          "default": "#000000",
+          "type": "string"
+         }
+        },
+        "required": [
+         "kind"
+        ]
+       }
+      ]
+     },
+     "camera": {
+      "default": [],
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "at": {
+         "type": "number",
+         "minimum": 0,
+         "description": "seconds from the start of the beat"
+        },
+        "to": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number",
+           "minimum": -50,
+           "maximum": 150,
+           "description": "left edge, % of frame width"
+          },
+          "y": {
+           "type": "number",
+           "minimum": -50,
+           "maximum": 150,
+           "description": "top edge, % of frame height"
+          },
+          "w": {
+           "type": "number",
+           "exclusiveMinimum": 0,
+           "maximum": 200,
+           "description": "width, % of frame width"
+          },
+          "h": {
+           "type": "number",
+           "exclusiveMinimum": 0,
+           "maximum": 200,
+           "description": "height, % of frame height"
+          }
+         },
+         "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+         ],
+         "description": "the region of the stage that should fill the frame"
+        },
+        "inFrames": {
+         "default": 6,
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 90
+        },
+        "hold": {
+         "type": "number",
+         "minimum": 0,
+         "description": "seconds to hold before returning"
+        },
+        "outFrames": {
+         "default": 10,
+         "description": "0 = stay zoomed until the next move or beat end",
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 90
+        },
+        "tiltDeg": {
+         "default": 0,
+         "description": "perspective tilt around the vertical axis",
+         "type": "number",
+         "minimum": -15,
+         "maximum": 15
+        },
+        "meta": {
+         "default": {
+          "origin": "ai",
+          "locked": false
+         },
+         "type": "object",
+         "properties": {
+          "origin": {
+           "default": "ai",
+           "type": "string",
+           "enum": [
+            "ai",
+            "user",
+            "template"
+           ]
+          },
+          "locked": {
+           "default": false,
+           "description": "AI passes must never modify a locked node",
+           "type": "boolean"
+          },
+          "reason": {
+           "description": "one sentence: why this decision exists",
+           "type": "string"
+          }
+         }
+        }
+       },
+       "required": [
+        "at",
+        "to",
+        "hold"
+       ]
+      }
+     },
+     "layers": {
+      "default": [],
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "component": {
+         "type": "string",
+         "description": "name in the component registry"
+        },
+        "props": {
+         "default": {},
+         "type": "object",
+         "propertyNames": {
+          "type": "string"
+         },
+         "additionalProperties": {}
+        },
+        "box": {
+         "type": "object",
+         "properties": {
+          "x": {
+           "type": "number",
+           "minimum": -50,
+           "maximum": 150,
+           "description": "left edge, % of frame width"
+          },
+          "y": {
+           "type": "number",
+           "minimum": -50,
+           "maximum": 150,
+           "description": "top edge, % of frame height"
+          },
+          "w": {
+           "type": "number",
+           "exclusiveMinimum": 0,
+           "maximum": 200,
+           "description": "width, % of frame width"
+          },
+          "h": {
+           "type": "number",
+           "exclusiveMinimum": 0,
+           "maximum": 200,
+           "description": "height, % of frame height"
+          },
+          "rotation": {
+           "default": 0,
+           "type": "number",
+           "minimum": -180,
+           "maximum": 180
+          }
+         },
+         "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+         ]
+        },
+        "space": {
+         "default": "screen",
+         "type": "string",
+         "enum": [
+          "stage",
+          "screen"
+         ]
+        },
+        "z": {
+         "default": 10,
+         "type": "integer",
+         "minimum": -9007199254740991,
+         "maximum": 9007199254740991
+        },
+        "enter": {
+         "type": "object",
+         "properties": {
+          "at": {
+           "type": "number",
+           "minimum": 0,
+           "description": "seconds from the start of the beat"
+          },
+          "preset": {
+           "type": "string",
+           "enum": [
+            "pop",
+            "slide",
+            "slide-blur",
+            "fade",
+            "drop",
+            "scale-in",
+            "typewriter",
+            "cut"
+           ]
+          },
+          "direction": {
+           "default": "center",
+           "type": "string",
+           "enum": [
+            "left",
+            "right",
+            "up",
+            "down",
+            "center"
+           ]
+          },
+          "durationFrames": {
+           "default": 8,
+           "type": "integer",
+           "minimum": 0,
+           "maximum": 120
+          }
+         },
+         "required": [
+          "at",
+          "preset"
+         ]
+        },
+        "exit": {
+         "type": "object",
+         "properties": {
+          "at": {
+           "type": "number",
+           "minimum": 0,
+           "description": "seconds from the start of the beat"
+          },
+          "preset": {
+           "default": "fade",
+           "type": "string",
+           "enum": [
+            "fade",
+            "scale-out",
+            "slide",
+            "cut"
+           ]
+          },
+          "durationFrames": {
+           "default": 5,
+           "type": "integer",
+           "minimum": 0,
+           "maximum": 60
+          }
+         },
+         "required": [
+          "at"
+         ]
+        },
+        "meta": {
+         "default": {
+          "origin": "ai",
+          "locked": false
+         },
+         "type": "object",
+         "properties": {
+          "origin": {
+           "default": "ai",
+           "type": "string",
+           "enum": [
+            "ai",
+            "user",
+            "template"
+           ]
+          },
+          "locked": {
+           "default": false,
+           "description": "AI passes must never modify a locked node",
+           "type": "boolean"
+          },
+          "reason": {
+           "description": "one sentence: why this decision exists",
+           "type": "string"
+          }
+         }
+        }
+       },
+       "required": [
+        "id",
+        "component",
+        "box",
+        "enter"
+       ]
+      }
+     },
+     "moods": {
+      "default": [],
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "kind": {
+         "type": "string",
+         "enum": [
+          "anger",
+          "sad",
+          "happy",
+          "shock",
+          "confusion"
+         ]
+        },
+        "at": {
+         "type": "number",
+         "minimum": 0
+        },
+        "duration": {
+         "type": "number",
+         "exclusiveMinimum": 0,
+         "maximum": 20
+        },
+        "intensity": {
+         "default": 0.6,
+         "type": "number",
+         "minimum": 0,
+         "maximum": 1
+        },
+        "meta": {
+         "default": {
+          "origin": "ai",
+          "locked": false
+         },
+         "type": "object",
+         "properties": {
+          "origin": {
+           "default": "ai",
+           "type": "string",
+           "enum": [
+            "ai",
+            "user",
+            "template"
+           ]
+          },
+          "locked": {
+           "default": false,
+           "description": "AI passes must never modify a locked node",
+           "type": "boolean"
+          },
+          "reason": {
+           "description": "one sentence: why this decision exists",
+           "type": "string"
+          }
+         }
+        }
+       },
+       "required": [
+        "kind",
+        "at",
+        "duration"
+       ]
+      }
+     },
+     "meta": {
+      "default": {
+       "origin": "ai",
+       "locked": false
+      },
+      "type": "object",
+      "properties": {
+       "origin": {
+        "default": "ai",
+        "type": "string",
+        "enum": [
+         "ai",
+         "user",
+         "template"
+        ]
+       },
+       "locked": {
+        "default": false,
+        "description": "AI passes must never modify a locked node",
+        "type": "boolean"
+       },
+       "reason": {
+        "description": "one sentence: why this decision exists",
+        "type": "string"
+       }
+      }
+     }
+    },
+    "required": [
+     "id",
+     "start",
+     "end",
+     "base"
+    ]
+   }
+  }
+ },
+ "required": [
+  "version",
+  "componentLibrary",
+  "format",
+  "audio",
+  "beats"
+ ]
+}
