@@ -12,3 +12,4 @@ Grouping/linking of clips, copy/paste, markers, ripple delete, track mute/lock, 
 
 ## Next
 Markers on the ruler, ripple delete, track mute, more transitions (push, iris, whip-pan, zoom blur), keyframed effect settings.
+4. **Four more transitions** in the Transitions tab, one `Reveal` component: **Iris** (circle closes then opens), **Clock wipe**, **Slats** (staggered bars), **Whip blur** (fast sideways smear). Checked on real Remotion stills. Inspired by HyperFrames' transition catalogue (iris / radial / whip-pan families), re-done as plain CSS so they stay deterministic.

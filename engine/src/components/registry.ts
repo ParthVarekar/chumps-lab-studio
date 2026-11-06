@@ -1,5 +1,5 @@
 import { Generated, GeneratedProps } from '../element/Element';
-import { Arrow, ArrowProps, BlurRegion, BlurRegionProps, Captions, CaptionsProps, ClickRipple, ClickRippleProps, FadeBlack, FadeBlackProps, Flash, FlashProps, Glitch, GlitchProps, Highlight, HighlightProps, Letterbox, LetterboxProps, LowerThird, LowerThirdProps, Spotlight, SpotlightProps, StepBadge, StepBadgeProps, Vignette, VignetteProps, Wipe, WipeProps } from './Effects';
+import { Arrow, ArrowProps, BlurRegion, BlurRegionProps, Captions, CaptionsProps, ClickRipple, ClickRippleProps, FadeBlack, FadeBlackProps, Flash, FlashProps, Glitch, GlitchProps, Highlight, HighlightProps, Letterbox, LetterboxProps, LowerThird, LowerThirdProps, Spotlight, SpotlightProps, StepBadge, StepBadgeProps, Vignette, VignetteProps, Wipe, WipeProps, Reveal, RevealProps } from './Effects';
 import { ColorChip, ColorChipProps, EvidenceCard, EvidenceCardProps, MemeCut, MemeCutProps, MemeSticker, MemeStickerProps, PopImage, PopImageProps } from './Media';
 import { BarChart, BarChartProps, Gauge, GaugeProps } from './tech/Charts';
 import { CodeBlock, CodeBlockProps, Terminal, TerminalProps } from './tech/Code';
@@ -41,6 +41,7 @@ export const REGISTRY: Record<string, ComponentDef> = {
 	Flash: { description: 'Quick full-frame flash (cut accent)', props: FlashProps, Component: Flash, space: 'screen' },
 	FadeBlack: { description: 'Fade to / from black, or dip through it', props: FadeBlackProps, Component: FadeBlack, space: 'screen' },
 	Wipe: { description: 'Colour bar wipes across the frame (transition)', props: WipeProps, Component: Wipe, space: 'screen' },
+	Reveal: { description: 'Transition: iris, clock sweep, slats or whip-blur covers the frame and uncovers it', props: RevealProps, Component: Reveal, space: 'screen' },
 	Glitch: { description: 'Digital glitch bars (transition / emphasis)', props: GlitchProps, Component: Glitch, space: 'screen' },
 	Vignette: { description: 'Darkened edges', props: VignetteProps, Component: Vignette, space: 'screen' },
 	Letterbox: { description: 'Cinematic black bars', props: LetterboxProps, Component: Letterbox, space: 'screen' },

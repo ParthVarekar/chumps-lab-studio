@@ -239,7 +239,7 @@ button.wide { width: 100%; justify-content: center; }
 .slider output { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; color: var(--dim); font-size: 12px; }
 .row2 { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
 .clip-Highlight, .clip-Spotlight, .clip-BlurRegion, .clip-Arrow, .clip-ClickRipple, .clip-StepBadge, .clip-LowerThird { background: #1f6a6a; }
-.clip-Flash, .clip-FadeBlack, .clip-Wipe, .clip-Glitch, .clip-Vignette, .clip-Letterbox { background: #8a5a1f; }
+.clip-Flash, .clip-FadeBlack, .clip-Wipe, .clip-Reveal, .clip-Glitch, .clip-Vignette, .clip-Letterbox { background: #8a5a1f; }
 .clip-Captions { background: #5a3f8a; }
 .clip-Generated { background: #8a7a1f; }
 

@@ -179,6 +179,50 @@ export const FadeBlack: React.FC<ComponentProps<z.infer<typeof FadeBlackProps>>>
 	return <AbsoluteFill style={{ background: tone(look, props.color), opacity: o }} />;
 };
 
+export const RevealProps = z.object({
+	style: z.enum(['iris', 'clock', 'slats', 'whip']).default('iris').describe('iris = circle closes then opens; clock = a sweep like a clock hand; slats = staggered bars; whip = fast blurred pan'),
+	color: z.string().default('black'),
+});
+/** Four more transitions: cover the frame over the first half of the layer, uncover over the second (the cut happens under the cover). */
+export const Reveal: React.FC<ComponentProps<z.infer<typeof RevealProps>>> = ({ props, elapsed, length }) => {
+	const { look } = useStudio();
+	const u = clamp01(elapsed / Math.max(0.15, length));
+	const ease = Easing.inOut(Easing.cubic);
+	const cover = ease(clamp01(u * 2));
+	const uncover = ease(clamp01(u * 2 - 1));
+	const col = tone(look, props.color);
+	if (props.style === 'iris') {
+		const r = u < 0.5 ? 78 * (1 - cover) : 78 * uncover; // radius of the hole, % of the diagonal
+		return <AbsoluteFill style={{ background: col, WebkitMaskImage: `radial-gradient(circle at 50% 50%, transparent ${r}%, #000 ${r + 0.4}%)`, maskImage: `radial-gradient(circle at 50% 50%, transparent ${r}%, #000 ${r + 0.4}%)` }} />;
+	}
+	if (props.style === 'clock') {
+		const tail = uncover * 360;
+		const head = cover * 360;
+		return <AbsoluteFill style={{ background: `conic-gradient(from 0deg at 50% 50%, transparent 0deg ${tail}deg, ${col} ${tail}deg ${head}deg, transparent ${head}deg 360deg)` }} />;
+	}
+	if (props.style === 'slats') {
+		const n = 6;
+		return (
+			<AbsoluteFill>
+				{Array.from({ length: n }, (_, i) => {
+					const lag = (i / n) * 0.35;
+					const a = ease(clamp01((u * 2 - lag) / (1 - 0.35)));
+					const b = ease(clamp01(((u * 2 - 1) - lag) / (1 - 0.35)));
+					return <div key={i} style={{ position: 'absolute', left: 0, right: 0, top: `${(i / n) * 100}%`, height: `${100 / n + 0.2}%`, background: col, clipPath: `inset(0 ${100 - a * 100}% 0 ${b * 100}%)` }} />;
+				})}
+			</AbsoluteFill>
+		);
+	}
+	// whip: the picture smears sideways at the midpoint
+	const blur = Math.sin(Math.PI * u) * 46;
+	const streak = interpolate(u, [0, 1], [-60, 160]);
+	return (
+		<AbsoluteFill style={{ backdropFilter: `blur(${blur}px)`, WebkitBackdropFilter: `blur(${blur}px)`, overflow: 'hidden' }}>
+			<div style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', left: `${streak}%`, background: `linear-gradient(90deg, transparent, ${col === 'black' ? 'rgba(255,255,255,0.35)' : col}, transparent)`, opacity: Math.sin(Math.PI * u), transform: 'skewX(-18deg)' }} />
+		</AbsoluteFill>
+	);
+};
+
 export const WipeProps = z.object({ direction: z.enum(['right', 'left', 'up', 'down']).default('right'), color: z.string().default('accent') });
 export const Wipe: React.FC<ComponentProps<z.infer<typeof WipeProps>>> = ({ props, elapsed, length }) => {
 	const { look } = useStudio();

@@ -92,6 +92,10 @@ export const EFFECT_TILES: Tile[] = [
 export const TRANSITION_TILES: Tile[] = [
 	{ id: 'flash', label: 'Flash', hint: 'White flash on the cut', placement: 'moment', component: 'Flash', props: {}, len: 0.3 },
 	{ id: 'dip', label: 'Dip to black', hint: 'Fade out and back', placement: 'moment', component: 'FadeBlack', props: { mode: 'dip' }, len: 0.9 },
+	{ id: 'iris', label: 'Iris', hint: 'Circle closes, then opens', placement: 'moment', component: 'Reveal', props: { style: 'iris', color: 'black' }, len: 0.8 },
+	{ id: 'clock', label: 'Clock wipe', hint: 'Sweeps round like a clock hand', placement: 'moment', component: 'Reveal', props: { style: 'clock', color: 'accent' }, len: 0.9 },
+	{ id: 'slats', label: 'Slats', hint: 'Staggered bars slide through', placement: 'moment', component: 'Reveal', props: { style: 'slats', color: 'accent' }, len: 0.8 },
+	{ id: 'whip', label: 'Whip blur', hint: 'Fast sideways smear', placement: 'moment', component: 'Reveal', props: { style: 'whip', color: 'white' }, len: 0.6 },
 	{ id: 'wipe', label: 'Colour wipe', hint: 'Bar sweeps across', placement: 'moment', component: 'Wipe', props: { direction: 'right' }, len: 0.7 },
 	{ id: 'glitch', label: 'Glitch', hint: 'Digital glitch bars', placement: 'moment', component: 'Glitch', props: {}, len: 0.5 },
 	{ id: 'punch', label: 'Zoom punch', hint: 'Quick punch-in on the beat', placement: 'moment', special: 'zoom-punch' },
