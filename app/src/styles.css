@@ -252,3 +252,6 @@ button.wide { width: 100%; justify-content: center; }
 /* disabled items stay on the timeline but are dimmed and struck through */
 .clip.off { opacity: 0.38; filter: grayscale(0.8); }
 .clip.off span { text-decoration: line-through; }
+
+.clip-marker { background: #2f6fed; }
+.clip-marker svg { margin-right: 3px; flex: none; }

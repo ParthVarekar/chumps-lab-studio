@@ -1,5 +1,5 @@
 import { Timeline as XTimeline, type TimelineState } from '@xzdarcy/react-timeline-editor';
-import { Copy, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
+import { Copy, Flag, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { fmt, useStudio } from '../store';
@@ -107,6 +107,7 @@ export const TimelinePanel: React.FC = () => {
 							onCursorDrag={(t) => seek(t)}
 							onClickRow={(e) => { if ((e.target as HTMLElement).closest('.timeline-editor-action')) return; select([]); }}
 							onClickAction={(e, { action }) => {
+								if (action.id.startsWith('marker:')) { seek(action.start); return; }
 								if (!items[action.id]) return;
 								const ev = e as unknown as MouseEvent;
 								select([action.id], ev.shiftKey || ev.ctrlKey);
@@ -115,6 +116,7 @@ export const TimelinePanel: React.FC = () => {
 							onActionResizeEnd={({ action, start, end }) => { if (items[action.id]) void run([{ op: 'set_time', id: action.id, start, end }]); }}
 							getActionRender={(action) => {
 								if (action.id === 'voice') return <div className="clip clip-voice"><Waveform peaks={peaks} duration={duration} /></div>;
+								if (action.id.startsWith('marker:')) return <div className="clip clip-marker" title="Marker: click to jump here. Shift+M at the playhead removes it"><Flag size={10} /><span>{real?.markers.find((k) => k.id === action.id.slice(7))?.label}</span></div>;
 								if (action.id.startsWith('beat:')) return <div className="clip clip-beat">{action.id.slice(5)}</div>;
 								const m = items[action.id];
 								const cls = ['clip', `clip-${action.effectId}`, selection.includes(action.id) ? 'selected' : '', m?.locked ? 'locked' : '', m?.disabled ? 'off' : '', m?.group ? `grouped g-${hue(m.group)}` : '', m?.origin === 'user' ? 'mine' : '', draftIds.has(action.id) ? 'ghost' : ''].filter(Boolean).join(' ');

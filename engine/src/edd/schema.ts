@@ -137,6 +137,9 @@ export const SfxClip = z.object({
 });
 export type SfxClip = z.infer<typeof SfxClip>;
 
+export const Marker = z.object({ id: z.string(), at: z.number().min(0), label: z.string().default('') });
+export type Marker = z.infer<typeof Marker>;
+
 export const Edd = z
 	.object({
 		version: z.literal(EDD_VERSION),
@@ -152,6 +155,7 @@ export const Edd = z
 			music: z.array(AudioClip).default([]),
 			sfx: z.array(SfxClip).default([]),
 		}),
+		markers: z.array(Marker).default([]).describe('named points on the timeline (chapters, notes to self); they never render'),
 		beats: z.array(Beat).min(1),
 	})
 	.superRefine((edd, ctx) => {

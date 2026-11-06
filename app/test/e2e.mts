@@ -300,6 +300,23 @@ await page.keyboard.press('e');
 await sleep(900);
 ok('E again switches it back on', !(await doc()).beats.flatMap((b: any) => b.layers).find((l: any) => l.id === pasted[0].l.id)?.meta?.disabled);
 
+// 9j. Markers: M drops one at the playhead, Ctrl+→ jumps to the next, Shift+M removes
+await page.evaluate(() => (window as any).__studio.getState().seekTo(30));
+await sleep(500);
+await page.keyboard.press('m');
+await sleep(800);
+await page.evaluate(() => (window as any).__studio.getState().seekTo(10));
+await sleep(500);
+await page.keyboard.down('Control'); await page.keyboard.press('ArrowRight'); await page.keyboard.up('Control');
+await sleep(600);
+const mkDoc = (await doc()).markers;
+const tNow = await page.evaluate(() => (window as any).__studio.getState().time);
+ok('M adds a marker at the playhead and it shows on the timeline', mkDoc.length === 1 && Math.abs(mkDoc[0].at - 30) < 0.1 && (await page.$$('.clip-marker')).length === 1);
+ok('Ctrl+→ jumps to the next marker', Math.abs(tNow - 30) < 0.1, `${tNow} s`);
+await page.keyboard.down('Shift'); await page.keyboard.press('m'); await page.keyboard.up('Shift');
+await sleep(800);
+ok('Shift+M removes the marker under the playhead', (await doc()).markers.length === 0);
+
 // 10. Another client (the AI via the API) changes the doc: the open editor updates live
 const rev0 = (await api('/api/open', { dir: DIR })).rev;
 const before2 = (await page.$$('.clip')).length;

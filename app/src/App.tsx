@@ -74,6 +74,20 @@ function useShortcuts() {
 				const first = Math.min(...live.map((x) => x.sp!.start));
 				void st.run(live.map((x) => ({ op: 'duplicate' as const, id: x.id, at: Math.max(0, st.time + (x.sp!.start - first)) })));
 			}
+			else if (e.key.toLowerCase() === 'm' && !mod) {
+				e.preventDefault();
+				if (e.shiftKey) {
+					const near = st.edd.markers.find((k) => Math.abs(k.at - st.time) < 0.3);
+					if (near) void st.run([{ op: 'remove_marker', id: near.id }]);
+				} else void st.run([{ op: 'add_marker', at: st.time }]);
+			}
+			else if (mod && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && st.edd.markers.length) {
+				// Jump to the previous / next marker.
+				e.preventDefault();
+				const ts = st.edd.markers.map((k) => k.at).sort((a, b) => a - b);
+				const target = e.key === 'ArrowLeft' ? [...ts].reverse().find((t) => t < st.time - 0.05) : ts.find((t) => t > st.time + 0.05);
+				if (target !== undefined) go(target);
+			}
 			else if (e.key === 'ArrowLeft') { e.preventDefault(); go(st.time - (e.shiftKey ? 1 : 1 / fps)); }
 			else if (e.key === 'ArrowRight') { e.preventDefault(); go(st.time + (e.shiftKey ? 1 : 1 / fps)); }
 			else if (e.key === 'Home') go(0);

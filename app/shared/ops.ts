@@ -72,6 +72,8 @@ export const Op = z.discriminatedUnion('op', [
 	z.object({ op: z.literal('duplicate'), id: Id, at: z.number().optional().describe('global start of the copy (default: right after the original)') }),
 	z.object({ op: z.literal('split'), id: Id, at: z.number() }),
 	z.object({ op: z.literal('lock'), id: Id, locked: z.boolean() }),
+	z.object({ op: z.literal('add_marker'), at: z.number(), label: z.string().optional() }),
+	z.object({ op: z.literal('remove_marker'), id: z.string().describe('marker id, e.g. mk1') }),
 	z.object({ op: z.literal('set_enabled'), id: Id, enabled: z.boolean().describe('false keeps the item in the edit but stops it rendering / sounding; a grouped item switches its whole group') }),
 	z.object({ op: z.literal('group'), ids: z.array(Id).min(2).describe('items to link (zoom, effects, sounds): afterwards they move, copy, lock and delete as one'), name: z.string().optional() }),
 	z.object({ op: z.literal('ungroup'), id: Id.describe('any member: the whole group is released') }),
@@ -655,6 +657,19 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 			else if (f.kind === 'mood') f.beat!.moods[f.index!].meta.locked = op.locked;
 			else f.sfx!.meta.locked = op.locked;
 			return { ok: true, op, id: op.id, message: `${op.locked ? 'locked' : 'unlocked'} ${op.id}` };
+		}
+		case 'add_marker': {
+			const used = new Set(edd.markers.map((m) => m.id));
+			let n = edd.markers.length + 1;
+			while (used.has(`mk${n}`)) n++;
+			edd.markers.push({ id: `mk${n}`, at: r3(Math.max(0, op.at)), label: op.label ?? `Marker ${n}` });
+			edd.markers.sort((a, z) => a.at - z.at);
+			return { ok: true, op, id: `mk${n}`, message: `marked ${r3(op.at)} s` };
+		}
+		case 'remove_marker': {
+			if (!edd.markers.some((m) => m.id === op.id)) throw new Error(`no marker ${op.id}`);
+			edd.markers = edd.markers.filter((m) => m.id !== op.id);
+			return { ok: true, op, message: `removed marker ${op.id}` };
 		}
 		case 'set_enabled': {
 			const crew = withGroup(edd, op.id);

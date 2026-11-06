@@ -3,11 +3,11 @@ import type { TimelineAction, TimelineEffect, TimelineRow } from '@xzdarcy/timel
 import type { Edd } from '@cls/engine/src/edd/schema';
 import { camId, isContinuation, metaOfItem, moodId, segments } from '../../shared/ops';
 
-export interface RowMeta { label: string; kind: 'video' | 'voice' | 'camera' | 'screen' | 'stage' | 'mood' | 'sfx' }
+export interface RowMeta { label: string; kind: 'video' | 'marker' | 'voice' | 'camera' | 'screen' | 'stage' | 'mood' | 'sfx' }
 export interface ItemMeta { label: string; kind: 'layer' | 'camera' | 'mood' | 'sfx'; locked: boolean; origin: string; component?: string; group?: string; disabled?: boolean }
 
 export const EFFECTS: Record<string, TimelineEffect> = Object.fromEntries(
-	['beat', 'voice', 'camera', 'mood', 'sfx', 'Title', 'KineticWord', 'Header', 'PopImage', 'MemeSticker', 'EvidenceCard', 'MemeCut', 'UILabel', 'ColorChip', 'CodeBlock', 'Terminal', 'BarChart', 'Gauge', 'NeuralNet', 'Highlight', 'Spotlight', 'BlurRegion', 'Arrow', 'ClickRipple', 'StepBadge', 'LowerThird', 'Flash', 'FadeBlack', 'Wipe', 'Reveal', 'Glitch', 'Vignette', 'Letterbox', 'Captions', 'Generated'].map((k) => [k, { id: k, name: k }]),
+	['beat', 'marker', 'voice', 'camera', 'mood', 'sfx', 'Title', 'KineticWord', 'Header', 'PopImage', 'MemeSticker', 'EvidenceCard', 'MemeCut', 'UILabel', 'ColorChip', 'CodeBlock', 'Terminal', 'BarChart', 'Gauge', 'NeuralNet', 'Highlight', 'Spotlight', 'BlurRegion', 'Arrow', 'ClickRipple', 'StepBadge', 'LowerThird', 'Flash', 'FadeBlack', 'Wipe', 'Reveal', 'Glitch', 'Vignette', 'Letterbox', 'Captions', 'Generated'].map((k) => [k, { id: k, name: k }]),
 );
 
 const short = (s: unknown, n = 22) => String(s ?? '').replace(/\s+/g, ' ').slice(0, n);
@@ -32,6 +32,7 @@ export function buildRows(edd: Edd, duration: number): { rows: TimelineRow[]; ro
 	};
 
 	add('beats', 'Video', 'video', edd.beats.map((b) => ({ id: `beat:${b.id}`, start: b.start, end: b.end, effectId: 'beat', movable: false, flexible: false })));
+	if (edd.markers.length) add('markers', 'Markers', 'marker', edd.markers.map((m) => ({ id: `marker:${m.id}`, start: m.at, end: m.at + 1.2, effectId: 'marker', movable: false, flexible: false })));
 	add('voice', 'Voice', 'voice', edd.audio.voice ? [{ id: 'voice', start: 0, end: duration, effectId: 'voice', movable: false, flexible: false }] : []);
 
 	const cams: TimelineAction[] = [];

@@ -79,4 +79,11 @@ assert.equal(off.edd.beats.flatMap((b) => [...b.camera, ...b.layers]).filter((x)
 assert.ok(find(off.edd, de.notes[0].id!), 'a disabled item is still in the edit');
 const on = run(off.edd, { op: 'set_enabled', id: de.notes[0].id!, enabled: true });
 assert.equal(on.edd.beats.flatMap((b) => [...b.camera, ...b.layers]).filter((x) => x.meta.disabled).length, 0, 'enabling clears the flag');
+// 9. markers
+const mk1 = run(edd0, { op: 'add_marker', at: 12.5, label: 'intro ends' }, { op: 'add_marker', at: 3 });
+assert.deepEqual(mk1.edd.markers.map((m) => m.at), [3, 12.5], 'markers stay sorted by time');
+assert.equal(mk1.edd.markers[1].label, 'intro ends');
+const mk2 = run(mk1.edd, { op: 'remove_marker', id: mk1.notes[0].id! });
+assert.equal(mk2.edd.markers.length, 1);
+assert.equal(applyOps(mk2.edd, [{ op: 'remove_marker', id: 'nope' }]).notes[0].ok, false);
 console.log('ops: all checks passed');
