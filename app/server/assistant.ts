@@ -196,6 +196,10 @@ const OpSchemas = (stickers: string[], roles: string[]) => {
 		o('set_text', { item_id: z.string(), text: z.string() }),
 		o('set_volume', { item_id: z.string(), volume: z.number().describe('0 to 1') }),
 		o('lock', { item_id: z.string(), locked: z.boolean() }),
+		o('group', { item_ids: z.array(z.string()).min(2).describe('ids from ITEMS to link so they move, copy, lock and delete together, e.g. a zoom and the spotlight on it') }),
+		o('ungroup', { item_id: z.string().describe('any member of the group') }),
+		o('set_enabled', { item_id: z.string(), enabled: z.boolean().describe('false = switch off without deleting (to compare), true = switch back on') }),
+		o('add_marker', { at: AnchorSchema, label: z.string().nullable() }),
 		o('create_element', { at: AnchorSchema, seconds: z.number().describe('how long it stays, e.g. 3'), brief: z.string().describe('what to make, in the users own words, e.g. "small animated speedometer showing 78%"') }),
 		o('refine_element', { item_id: z.string().describe('an id from ITEMS whose type is Generated'), instruction: z.string() }),
 		z.object({ op: z.literal('ask'), question: z.string(), options: z.array(z.string()).describe('2-4 short choices the user can click'), why }),
@@ -213,11 +217,11 @@ function pack(a: AssistantArgs, ctx: Ctx): string {
 			if (seen.has(l.id.replace(/-b\d+$/, '')) || /^continues /.test(String(l.meta.reason ?? ''))) continue;
 			seen.add(l.id);
 			const sp = spanOf(a.edd, l.id)!;
-			if (sp.end >= lo && sp.start <= hi) items.push(`${l.id}: ${l.component}${l.props.text ? ` “${String(l.props.text).slice(0, 30)}”` : ''} ${sp.start.toFixed(1)}-${sp.end.toFixed(1)}s${l.meta.locked ? ' LOCKED' : ''}`);
+			if (sp.end >= lo && sp.start <= hi) items.push(`${l.id}: ${l.component}${l.props.text ? ` “${String(l.props.text).slice(0, 30)}”` : ''} ${sp.start.toFixed(1)}-${sp.end.toFixed(1)}s${l.meta.locked ? ' LOCKED' : ''}${l.meta.group ? ` group=${l.meta.group}` : ''}${l.meta.disabled ? ' OFF' : ''}`);
 		}
 		b.camera.forEach((c, i) => {
 			const sp = spanOf(a.edd, camId(b, i))!;
-			if (sp.end >= lo && sp.start <= hi) items.push(`${camId(b, i)}: zoom ${sp.start.toFixed(1)}-${sp.end.toFixed(1)}s`);
+			if (sp.end >= lo && sp.start <= hi) items.push(`${camId(b, i)}: zoom ${sp.start.toFixed(1)}-${sp.end.toFixed(1)}s${c.meta.group ? ` group=${c.meta.group}` : ''}${c.meta.disabled ? ' OFF' : ''}`);
 		});
 	}
 	for (const s of a.edd.audio.sfx) if (s.at >= lo && s.at <= hi) items.push(`${s.id}: sound ${s.role ?? ''} at ${s.at.toFixed(1)}s`);
@@ -248,6 +252,9 @@ Rules:
 - Keep it minimal: do exactly what was asked. If the request is vague ("make it better"), or you cannot find what they mean, return one ask op with 2-4 clickable options.
 - To MAKE a new animated thing that is not a sticker or logo (a speedometer, a wifi signal, a plant, a progress bar, a loading ring) use create_element with the user's words as the brief.
   To change one that already exists (type Generated in ITEMS) use refine_element.
+- Items can be GROUPED (shown as group=g1 in ITEMS): a grouped item moves, copies, locks and deletes with its group. To make a zoom and an effect on the same spot (e.g. a spotlight) work together, add both and then use group on their ids, or group existing ones. Use ungroup to split them.
+- "turn off / mute / hide / compare without" = set_enabled false (it stays in the edit); "turn it back on" = set_enabled true. Use remove only when they want it gone.
+- "mark / bookmark / chapter at X" = add_marker.
 - "say" is one friendly sentence describing what you will do.`;
 
 async function askModel(a: AssistantArgs, ctx: Ctx): Promise<AssistantReply> {
@@ -336,6 +343,14 @@ async function toOps(mo: ModelOp, a: AssistantArgs, ctx: Ctx): Promise<Op[]> {
 		}
 		case 'add_mood': return [{ op: 'add_mood', kind: mo.kind, at: at(mo.at, false), duration: 1.2, why: mo.why }];
 		case 'remove': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'remove', id: mo.item_id }];
+		case 'group': {
+			const ids = (mo.item_ids as string[]).filter((i) => find(a.edd, i));
+			if (ids.length < 2) throw new Error('I need at least two existing items to group');
+			return [{ op: 'group', ids }];
+		}
+		case 'ungroup': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'ungroup', id: mo.item_id }];
+		case 'set_enabled': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'set_enabled', id: mo.item_id, enabled: !!mo.enabled }];
+		case 'add_marker': return [{ op: 'add_marker', at: at(mo.at, false), label: mo.label ?? undefined }];
 		case 'lock': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'lock', id: mo.item_id, locked: !!mo.locked }];
 		case 'set_text': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'set_props', id: mo.item_id, props: { text: mo.text } }];
 		case 'set_volume': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'set_style', id: mo.item_id, volume: Math.max(0, Math.min(1, Number(mo.volume))) }];

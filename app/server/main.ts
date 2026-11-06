@@ -169,9 +169,9 @@ const routes: Record<string, Handler> = {
 				if (isContinuation(l) || seen.has(l.id)) continue;
 				seen.add(l.id);
 				const sp = spanOf(e, l.id)!;
-				out.push({ id: l.id, type: l.component, text: l.props.text ?? l.props.label ?? undefined, start: sp.start, end: sp.end, space: l.space, box: l.box, origin: l.meta.origin, locked: l.meta.locked, why: l.meta.reason });
+				out.push({ id: l.id, type: l.component, text: l.props.text ?? l.props.label ?? undefined, start: sp.start, end: sp.end, space: l.space, box: l.box, origin: l.meta.origin, locked: l.meta.locked, group: l.meta.group, disabled: l.meta.disabled, why: l.meta.reason });
 			}
-			b.camera.forEach((c, i) => { const id = camId(b, i); const sp = spanOf(e, id)!; out.push({ id, type: 'zoom', start: sp.start, end: sp.end, to: c.to, origin: c.meta.origin, locked: c.meta.locked, why: c.meta.reason }); });
+			b.camera.forEach((c, i) => { const id = camId(b, i); const sp = spanOf(e, id)!; out.push({ id, type: 'zoom', start: sp.start, end: sp.end, to: c.to, origin: c.meta.origin, locked: c.meta.locked, group: c.meta.group, disabled: c.meta.disabled, why: c.meta.reason }); });
 			b.moods.forEach((m, i) => { const id = moodId(b, i); const sp = spanOf(e, id)!; out.push({ id, type: `mood:${m.kind}`, start: sp.start, end: sp.end, origin: m.meta.origin, locked: m.meta.locked }); });
 		}
 		for (const s of e.audio.sfx) out.push({ id: s.id, type: 'sound', role: s.role, start: s.at, volume: s.volume, origin: s.meta.origin, locked: s.meta.locked });
