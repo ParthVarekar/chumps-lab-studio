@@ -1,4 +1,4 @@
-import { Clapperboard, ExternalLink, RotateCcw, RotateCw, Sparkles, Wand2 } from 'lucide-react';
+import { Clapperboard, ExternalLink, FilePlus, RotateCcw, RotateCw, Sparkles, Wand2 } from 'lucide-react';
 import React from 'react';
 import { stats } from './stats';
 import { useStudio } from '../store';
@@ -25,6 +25,7 @@ export const TopBar: React.FC = () => {
 	return (
 		<header className="topbar">
 			<span className="brand"><Clapperboard size={18} /> Chumps Lab Studio</span>
+			<button onClick={() => set({ dialog: 'new-project' })} title="Start a new project: name, sequence size and frame rate, first footage"><FilePlus size={15} /> New project</button>
 			<select className="project-select" value={dir ?? ''} onChange={(e) => e.target.value && void open(e.target.value)}>
 				<option value="">Open project…</option>
 				{projects.filter((p) => !p.name.startsWith('_')).map((p) => <option key={p.dir} value={p.dir}>{p.name}</option>)}

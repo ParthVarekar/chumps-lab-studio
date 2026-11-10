@@ -22,6 +22,26 @@ export type ComponentSchemas = Record<string, { description: string; space: stri
 export interface SfxItem { id: string; role: string; file: string; duration: number; source: { pack: string; author: string } }
 export interface Sticker { id: string; file: string; tags: string[]; credit: string }
 
+export interface MediaItem { name: string; path: string; kind: 'video' | 'image' | 'audio'; size: number; duration: number | null; width: number | null; height: number | null; fps: number | null; hasAudio: boolean; thumb: string | null; modified: number }
+export interface NewProjectArgs { name: string; width: number; height: number; fps: number; seconds?: number }
+
+/** Upload one file with progress (fetch cannot report upload progress, XHR can). The body is the raw file, streamed to disk by the server. */
+const upload = (dir: string, file: File, onProgress: (pct: number) => void): Promise<MediaItem> =>
+	new Promise((resolve, reject) => {
+		const x = new XMLHttpRequest();
+		x.open('POST', `/api/media/upload?dir=${encodeURIComponent(dir)}&name=${encodeURIComponent(file.name)}`);
+		x.setRequestHeader('X-Studio', '1');
+		x.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
+		x.onerror = () => reject(new Error('the upload failed (is the studio running?)'));
+		x.onload = () => {
+			let data: { error?: string } & Partial<MediaItem> = {};
+			try { data = JSON.parse(x.responseText); } catch { /* not JSON */ }
+			if (x.status >= 200 && x.status < 300) resolve(data as MediaItem);
+			else reject(new Error(data.error ?? `upload failed (${x.status})`));
+		};
+		x.send(file);
+	});
+
 const call = async <T,>(method: string, path: string, body?: unknown): Promise<T> => {
 	const r = await fetch(path, { method, headers: { 'X-Studio': '1', 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
 	const data = await r.json().catch(() => null);
@@ -31,6 +51,10 @@ const call = async <T,>(method: string, path: string, body?: unknown): Promise<T
 
 export const api = {
 	projects: () => call<ProjectInfo[]>('GET', '/api/projects'),
+	newProject: (a: NewProjectArgs) => call<{ dir: string }>('POST', '/api/projects/new', a),
+	media: (dir: string) => call<{ items: MediaItem[] }>('GET', `/api/media?dir=${encodeURIComponent(dir)}`),
+	deleteMedia: (dir: string, name: string) => call<{ ok: true }>('POST', '/api/media/delete', { dir, name }),
+	uploadMedia: upload,
 	open: (dir: string) => call<Opened>('POST', '/api/open', { dir }),
 	ops: (dir: string, ops: Op[], o: { author?: 'user' | 'ai'; dryRun?: boolean; note?: string } = {}) => call<OpsResult>('POST', '/api/ops', { dir, ops, ...o }),
 	undo: (dir: string) => call<{ ok: boolean; rev: number }>('POST', '/api/undo', { dir }),

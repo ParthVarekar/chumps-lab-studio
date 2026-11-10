@@ -7,7 +7,7 @@ export interface RowMeta { label: string; kind: 'video' | 'marker' | 'voice' | '
 export interface ItemMeta { label: string; kind: 'layer' | 'camera' | 'mood' | 'sfx'; locked: boolean; origin: string; component?: string; group?: string; disabled?: boolean }
 
 export const EFFECTS: Record<string, TimelineEffect> = Object.fromEntries(
-	['beat', 'marker', 'range', 'voice', 'camera', 'mood', 'sfx', 'Title', 'KineticWord', 'Header', 'PopImage', 'MemeSticker', 'EvidenceCard', 'MemeCut', 'UILabel', 'ColorChip', 'CodeBlock', 'Terminal', 'BarChart', 'Gauge', 'NeuralNet', 'Highlight', 'Spotlight', 'BlurRegion', 'Arrow', 'ClickRipple', 'StepBadge', 'LowerThird', 'Flash', 'FadeBlack', 'Wipe', 'Reveal', 'Glitch', 'Vignette', 'Letterbox', 'Captions', 'Generated'].map((k) => [k, { id: k, name: k }]),
+	['beat', 'marker', 'range', 'voice', 'camera', 'mood', 'sfx', 'Title', 'KineticWord', 'Header', 'PopImage', 'MemeSticker', 'EvidenceCard', 'MemeCut', 'UILabel', 'ColorChip', 'CodeBlock', 'Terminal', 'BarChart', 'Gauge', 'NeuralNet', 'Highlight', 'Spotlight', 'BlurRegion', 'Arrow', 'ClickRipple', 'StepBadge', 'LowerThird', 'Flash', 'FadeBlack', 'Wipe', 'Reveal', 'VideoClip', 'Glitch', 'Vignette', 'Letterbox', 'Captions', 'Generated'].map((k) => [k, { id: k, name: k }]),
 );
 
 const short = (s: unknown, n = 22) => String(s ?? '').replace(/\s+/g, ' ').slice(0, n);

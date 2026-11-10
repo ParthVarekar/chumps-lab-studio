@@ -1,11 +1,13 @@
-import { Captions, Crosshair, Layers, Music, Plus, Search, Shapes, Sparkles, Smile, Subtitles, Wand2, Zap, Play, Square, Save, MousePointer2 } from 'lucide-react';
+import { Captions, Crosshair, FolderOpen, Layers, Music, Plus, Search, Shapes, Sparkles, Smile, Subtitles, Wand2, Zap, Play, Square, Save, MousePointer2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type SfxItem, type Sticker } from '../api';
 import { useStudio, type Tab } from '../store';
 import { ElementThumb } from './ElementThumb';
+import { MediaTab } from './MediaTab';
 import { ADD_TILES, CAPTION_STYLES, EFFECT_TILES, TRANSITION_TILES, elementTile, type Tile } from './tiles';
 
 const SECTIONS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+	{ id: 'media', label: 'Media', icon: <FolderOpen size={18} /> },
 	{ id: 'add', label: 'Add', icon: <Plus size={18} /> },
 	{ id: 'effects', label: 'Effects', icon: <Layers size={18} /> },
 	{ id: 'transitions', label: 'Transitions', icon: <Zap size={18} /> },
@@ -36,7 +38,8 @@ export const Library: React.FC = () => {
 				))}
 			</nav>
 			<div className="tabbody">
-				{tab === 'add' ? <TileGrid title="Text and graphics" tiles={ADD_TILES} hint="Click to add at the playhead, or drag onto the preview." />
+				{tab === 'media' ? <MediaTab />
+					: tab === 'add' ? <TileGrid title="Text and graphics" tiles={ADD_TILES} hint="Click to add at the playhead, or drag onto the preview." />
 					: tab === 'effects' ? <TileGrid title="Effects" tiles={EFFECT_TILES} hint="Click a tile, then drag a box on the preview. Or drag the tile straight onto the picture." extra={<ZoomLabelTiles />} />
 					: tab === 'transitions' ? <TileGrid title="Transitions and moments" tiles={TRANSITION_TILES} hint="One click: it is centred on the playhead, so put the playhead on the cut first." extra={<MoodTiles />} />
 					: tab === 'captions' ? <CaptionsTab />

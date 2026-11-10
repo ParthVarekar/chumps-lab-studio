@@ -102,7 +102,8 @@ export function useShortcuts() {
 			const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
 			const mod = e.ctrlKey || e.metaKey;
 			if (e.key === 'Escape') {
-				if (st.help) st.set({ help: false });
+				if (st.dialog) st.set({ dialog: null });
+				else if (st.help) st.set({ help: false });
 				else if (st.pick) st.set({ pick: null, status: '' });
 				else if (st.draft) st.discard();
 				else if (st.tool === 'razor') st.set({ tool: 'select', status: '' });

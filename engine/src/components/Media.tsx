@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnimatedImage, Img, interpolate, useVideoConfig } from 'remotion';
+import { AnimatedImage, Img, OffthreadVideo, Sequence, interpolate, useVideoConfig } from 'remotion';
 import { z } from 'zod';
 import { Rect } from '../edd/schema';
 import { toFrame } from '../edd/timing';
@@ -59,6 +59,28 @@ export const MemeCut: React.FC<ComponentProps<z.infer<typeof MemeCutProps>>> = (
 		<Img src={useAsset(props.src)} style={{ width: '100%', height: '100%', objectFit: props.fit }} />
 	</div>
 );
+
+// ---------------------------------------------------------------- VideoClip
+export const VideoClipProps = z.object({
+	src: z.string().describe('project-relative video file in media/'),
+	from: z.number().min(0).default(0).describe('seconds into the file where it starts playing'),
+	fit: z.enum(['contain', 'cover']).default('cover'),
+	rounded: z.boolean().default(true),
+	shadow: z.boolean().default(true),
+});
+
+/** A video playing on top of the picture (picture-in-picture, a reaction, b-roll). Silent: bring its sound in as a sound item. It starts when the layer does. */
+export const VideoClip: React.FC<ComponentProps<z.infer<typeof VideoClipProps>>> = ({ props, layer }) => {
+	const { fps } = useVideoConfig();
+	const src = useAsset(props.src);
+	return (
+		<div style={{ width: '100%', height: '100%', background: '#000', overflow: 'hidden', borderRadius: props.rounded ? 14 : 0, boxShadow: props.shadow ? '0 10px 34px rgba(0,0,0,0.55)' : undefined }}>
+			<Sequence from={toFrame(layer.enter.at, fps)} layout="none">
+				<OffthreadVideo src={src} muted trimBefore={toFrame(props.from, fps)} style={{ width: '100%', height: '100%', objectFit: props.fit }} />
+			</Sequence>
+		</div>
+	);
+};
 
 // ---------------------------------------------------------------- EvidenceCard
 export const EvidenceCardProps = z.object({

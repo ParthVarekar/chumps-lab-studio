@@ -112,15 +112,14 @@ export const Inspector: React.FC = () => {
 				<h3>Nothing selected</h3>
 				<p>Click an item on the timeline to edit it. Drag its handles on the preview to move or resize.</p>
 				<dl className="keys">
-					<dt>Space</dt><dd>play / pause</dd>
-					<dt>← →</dt><dd>one frame (Shift: one second)</dd>
-					<dt>S</dt><dd>split at the playhead</dd>
-					<dt>[ ]</dt><dd>start / end at the playhead</dd>
-					<dt>Del</dt><dd>delete</dd>
-					<dt>Ctrl+D</dt><dd>duplicate</dd>
+					<dt>Space  J K L</dt><dd>play / shuttle</dd>
+					<dt>← →  ↑ ↓</dt><dd>frame / edit point</dd>
+					<dt>Ctrl+K</dt><dd>cut at the playhead</dd>
+					<dt>I  O</dt><dd>mark In / Out</dd>
+					<dt>Del  Shift+Del</dt><dd>delete / ripple</dd>
 					<dt>Ctrl+Z</dt><dd>undo (Shift: redo)</dd>
-					<dt>L</dt><dd>lock / unlock</dd>
 					<dt>/</dt><dd>ask the assistant</dd>
+					<dt>?</dt><dd>all shortcuts</dd>
 				</dl>
 			</div>
 		);

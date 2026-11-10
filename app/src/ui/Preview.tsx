@@ -189,7 +189,15 @@ export const Preview: React.FC = () => {
 	const bx = layer?.box;
 	useEffect(() => { requestAnimationFrame(() => moveable.current?.updateRect()); }, [bx?.x, bx?.y, bx?.w, bx?.h, size.w, size.h, one]);
 
-	if (!edd) return <div className="preview-empty">Open a project to start.</div>;
+	if (!edd) {
+		return (
+			<div className="preview-empty">
+				<b>No project open</b>
+				<span>Start a new project with your own footage, or open an existing one from the list above.</span>
+				<button className="primary" onClick={() => set({ dialog: 'new-project' })}>New project</button>
+			</div>
+		);
+	}
 
 	const lbox = layer?.box;
 	return (

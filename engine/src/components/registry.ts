@@ -1,6 +1,6 @@
 import { Generated, GeneratedProps } from '../element/Element';
 import { Arrow, ArrowProps, BlurRegion, BlurRegionProps, Captions, CaptionsProps, ClickRipple, ClickRippleProps, FadeBlack, FadeBlackProps, Flash, FlashProps, Glitch, GlitchProps, Highlight, HighlightProps, Letterbox, LetterboxProps, LowerThird, LowerThirdProps, Spotlight, SpotlightProps, StepBadge, StepBadgeProps, Vignette, VignetteProps, Wipe, WipeProps, Reveal, RevealProps } from './Effects';
-import { ColorChip, ColorChipProps, EvidenceCard, EvidenceCardProps, MemeCut, MemeCutProps, MemeSticker, MemeStickerProps, PopImage, PopImageProps } from './Media';
+import { ColorChip, ColorChipProps, EvidenceCard, EvidenceCardProps, MemeCut, MemeCutProps, MemeSticker, MemeStickerProps, PopImage, PopImageProps, VideoClip, VideoClipProps } from './Media';
 import { BarChart, BarChartProps, Gauge, GaugeProps } from './tech/Charts';
 import { CodeBlock, CodeBlockProps, Terminal, TerminalProps } from './tech/Code';
 import { NeuralNet, NeuralNetProps } from './tech/NeuralNet';
@@ -21,6 +21,7 @@ export const REGISTRY: Record<string, ComponentDef> = {
 	PopImage: { description: 'Logo / icon / photo / cut-out that illustrates the spoken word', props: PopImageProps, Component: PopImage },
 	EvidenceCard: { description: 'Screenshot of a real source on a card, with a highlight sweep on the quoted line', props: EvidenceCardProps, Component: EvidenceCard },
 	MemeSticker: { description: 'Animated reaction sticker (💀 😭 🤯 …) that pops in on a meme beat; licensed library only', props: MemeStickerProps, Component: MemeSticker },
+	VideoClip: { description: 'A video clip playing on top of the picture (picture-in-picture, b-roll)', props: VideoClipProps, Component: VideoClip },
 	MemeCut: { description: 'Full-frame meme card, usually a hard cut on a punchline', props: MemeCutProps, Component: MemeCut },
 	UILabel: { description: 'Label placed on the UI element being explained, with an outline around it', props: UILabelProps, Component: UILabel, space: 'stage' },
 	ColorChip: { description: 'Colour swatch when a colour is named', props: ColorChipProps, Component: ColorChip },

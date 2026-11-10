@@ -44,6 +44,8 @@ ok('project opens with timeline clips', (await page.$$('.clip')).length > 5, `${
 await shot('1-open');
 
 // 1. Library: add a title at the playhead
+await page.evaluate(() => (Array.from(document.querySelectorAll('.rail button')).find((b) => (b as HTMLElement).title === 'Add') as HTMLElement).click());
+await sleep(400);
 // The Title tile is a "point" tile: click it, then click where it should go on the picture.
 await page.evaluate(() => (Array.from(document.querySelectorAll('.tile')).find((e) => /^Title/.test((e as HTMLElement).innerText)) as HTMLElement).click());
 await sleep(500);

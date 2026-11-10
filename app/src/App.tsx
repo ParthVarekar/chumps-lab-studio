@@ -10,6 +10,7 @@ import { TimelinePanel } from './ui/Timeline';
 import { TopBar } from './ui/TopBar';
 import { useShortcuts } from './shortcuts';
 import { ShortcutHelp } from './ui/ShortcutHelp';
+import { Dialogs } from './ui/ProjectDialogs';
 
 export const App: React.FC = () => {
 	const init = useStudio((s) => s.init);
@@ -47,6 +48,7 @@ export const App: React.FC = () => {
 			</Group>
 			<footer className="statusbar"><span>{status}</span><span className="hint">press ? for shortcuts</span></footer>
 			<ShortcutHelp />
+			<Dialogs />
 		</div>
 	);
 };

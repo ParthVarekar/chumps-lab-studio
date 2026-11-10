@@ -99,5 +99,5 @@ In the browser, `window.__studio.getState()` exposes the editor's state for scri
 
 - Keystroke-synced typing sounds on footage; camera moves that cross a beat boundary stay clamped to one beat.
 - The assistant doesn't look at the frame (only transcript, on-screen text and the edit); drawing a region sends its text, not pixels.
-- No import UI for new footage (use `python -m cls_sidecar.ingest`), no multi-clip video editing (one recording per project).
+- Importing footage no longer needs the command line: *New project* and the Media tab take uploads, and several clips can follow each other on the timeline. What the Python ingest adds (transcript, on-screen-text search, the AI plan) is not run on uploaded footage yet; use `python -m cls_sidecar.ingest` for that.
 - Locks and "edited by you" protect items from the AI re-plan; chat edits are marked as yours once applied.

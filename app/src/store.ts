@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import type { Edd } from '@cls/engine/src/edd/schema';
 import { expandGroups, find, spanOf, type ApplyNote, type Op } from '../shared/ops';
-import { api, subscribe, type AssistantReply, type ComponentSchemas, type ElementEntry, type Opened, type ProjectInfo, type Word } from './api';
+import { api, subscribe, type MediaItem, type NewProjectArgs, type AssistantReply, type ComponentSchemas, type ElementEntry, type Opened, type ProjectInfo, type Word } from './api';
 import { placeOp, type Geometry, type Tile } from './ui/tiles';
 
-export type Tab = 'add' | 'effects' | 'transitions' | 'captions' | 'elements' | 'logos' | 'stickers' | 'sounds' | 'transcript';
+export type Tab = 'media' | 'add' | 'effects' | 'transitions' | 'captions' | 'elements' | 'logos' | 'stickers' | 'sounds' | 'transcript';
 export type RightTab = 'inspector' | 'assistant' | 'review';
 export type Pick = null | { kind: 'zoom' | 'label' | 'region' } | { kind: 'focus'; effect: 'spotlight' | 'hl-box' | 'hl-ellipse' } | { kind: 'retarget'; id: string } | { kind: 'place'; tile: Tile };
 export type Region = { x: number; y: number; w: number; h: number };
@@ -63,6 +63,12 @@ interface State {
 	/** Shuttle speed: 1, 2, 4 forward; negative plays backwards (the J key). */
 	rate: number;
 	help: boolean; // the shortcut sheet
+	media: MediaItem[]; // the project's media bin
+	uploads: { id: number; name: string; pct: number; error?: string }[];
+	dialog: null | 'new-project' | 'project-settings';
+	loadMedia: () => Promise<void>;
+	uploadFiles: (files: File[]) => Promise<MediaItem[]>;
+	createProject: (a: NewProjectArgs, files?: File[]) => Promise<void>;
 	init: () => Promise<void>;
 	open: (dir: string) => Promise<void>;
 	run: (ops: Op[], note?: string, o?: { author?: 'user' | 'ai' }) => Promise<ApplyNote[]>;
@@ -88,13 +94,51 @@ let nextMsg = 1;
 export const useStudio = create<State>((set, get) => ({
 	projects: [], dir: null, assetBase: '', edd: null, rev: 0, words: [], report: null, canUndo: false, canRedo: false,
 	selection: [], time: 0, playing: false, zoom: 60, status: '', log: '', busy: null, renderOutput: null,
-	draft: null, pick: null, region: null, leftTab: 'add', rightTab: 'inspector', msgs: [], guides: false,
+	draft: null, pick: null, region: null, leftTab: 'media', rightTab: 'inspector', msgs: [], guides: false,
 	schemas: {}, elements: [], designing: null,
 	seekTo: () => {},
 	playPause: () => {},
 	tool: 'select', range: { in: null, out: null }, rate: 1, help: false,
+	media: [], uploads: [], dialog: null,
 
 	set: (p) => set(p),
+
+	loadMedia: async () => {
+		const { dir } = get();
+		if (!dir) return set({ media: [] });
+		try { set({ media: (await api.media(dir)).items }); } catch { set({ media: [] }); }
+	},
+
+	/** Upload files into the open project's media bin, one after another, with a progress line each. */
+	uploadFiles: async (files) => {
+		const { dir } = get();
+		if (!dir || !files.length) return [];
+		const done: MediaItem[] = [];
+		for (const f of files) {
+			const id = Date.now() + Math.random();
+			set((s) => ({ uploads: [...s.uploads, { id, name: f.name, pct: 0 }] }));
+			try {
+				done.push(await api.uploadMedia(dir, f, (pct) => set((s) => ({ uploads: s.uploads.map((u) => (u.id === id ? { ...u, pct } : u)) }))));
+				set((s) => ({ uploads: s.uploads.filter((u) => u.id !== id) }));
+			} catch (e) {
+				set((s) => ({ uploads: s.uploads.map((u) => (u.id === id ? { ...u, error: e instanceof Error ? e.message : String(e) } : u)) }));
+			}
+		}
+		await get().loadMedia();
+		return done;
+	},
+
+	/** File > New Project: make it, open it, bring in the first footage (which replaces the empty placeholder) and show the Media tab. */
+	createProject: async (a, files = []) => {
+		const { dir } = await api.newProject(a);
+		set({ projects: await api.projects() });
+		await get().open(dir);
+		set({ leftTab: 'media', dialog: null });
+		const items = await get().uploadFiles(files);
+		const ops: Op[] = items.filter((i) => i.kind === 'video' || i.kind === 'image').map((i) => ({ op: 'add_footage' as const, src: i.path, duration: i.duration ?? 5, kind: i.kind as 'video' | 'image', has_audio: i.hasAudio }));
+		if (ops.length) await get().run(ops, 'footage added');
+		set({ status: `Created ${a.name}` });
+	},
 
 	init: async () => {
 		set({ projects: await api.projects() });
@@ -115,6 +159,7 @@ export const useStudio = create<State>((set, get) => ({
 	open: async (dir) => {
 		const o: Opened = await api.open(dir);
 		set({ dir: o.dir, edd: o.edd, rev: o.rev, assetBase: o.assetBase, words: o.words, report: o.report, selection: [], time: 0, draft: null, canUndo: o.canUndo > 0, canRedo: o.canRedo > 0, status: `Opened ${dir.split(/[\\/]/).pop()}`, msgs: [] });
+		void get().loadMedia();
 		const url = new URL(location.href);
 		url.searchParams.set('project', dir);
 		history.replaceState(null, '', url);

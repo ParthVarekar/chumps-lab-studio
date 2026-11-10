@@ -275,3 +275,49 @@ button.wide { width: 100%; justify-content: center; }
 .help h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
 .krow { display: flex; gap: 10px; align-items: baseline; padding: 2px 0; font-size: 12.5px; }
 .krow kbd { flex: none; min-width: 120px; font: 600 11.5px ui-monospace, Consolas, monospace; background: #0003; border: 1px solid #fff2; border-radius: 5px; padding: 1px 6px; color: #ffd60a; }
+
+.clip-VideoClip { background: #5b3fa0; }
+
+/* media bin and project dialogs */
+.preview-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; text-align: center; padding: 24px; color: var(--muted, #9aa3b5); }
+.preview-empty b { color: var(--text, #fff); font-size: 16px; }
+.mediatab { display: flex; flex-direction: column; gap: 8px; }
+.mediatab.empty { gap: 12px; }
+.projcard { background: #ffffff0a; border: 1px solid var(--line, #333); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; }
+.projname { display: flex; align-items: center; gap: 6px; overflow: hidden; }
+.projname b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.projbtns { display: flex; gap: 6px; margin-top: 4px; }
+.projbtns button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.dropzone { border: 2px dashed #ffffff30; border-radius: 12px; padding: 14px 10px; text-align: center; display: grid; gap: 3px; justify-items: center; cursor: pointer; color: var(--muted, #9aa3b5); transition: border-color .15s, background .15s; }
+.dropzone:hover, .dropzone.over { border-color: #ffd60a; background: #ffd60a12; color: var(--text, #fff); }
+.dropzone small { opacity: .7; }
+.upload { display: grid; gap: 3px; font-size: 12px; }
+.upload progress { width: 100%; height: 6px; accent-color: #ffd60a; }
+.upload.bad em { color: #ff6b6b; font-style: normal; }
+.filters { display: grid; gap: 6px; }
+.msearch { display: flex; align-items: center; gap: 6px; background: #0003; border: 1px solid var(--line, #333); border-radius: 8px; padding: 3px 8px; }
+.msearch input { flex: 1; background: transparent; border: 0; color: inherit; outline: 0; min-width: 0; }
+.mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mcard { background: #ffffff0a; border: 1px solid var(--line, #333); border-radius: 10px; padding: 6px; display: grid; gap: 3px; min-width: 0; }
+.mcard[draggable=true] { cursor: grab; }
+.mthumb { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 7px; overflow: hidden; display: grid; place-items: center; }
+.mthumb img { width: 100%; height: 100%; object-fit: cover; }
+.mnothumb { display: grid; place-items: center; width: 100%; height: 100%; color: #ffffff60; background: linear-gradient(135deg, #20283a, #151a27); }
+.mdur { position: absolute; right: 4px; bottom: 4px; background: #000b; border-radius: 4px; font: 600 10.5px ui-monospace, Consolas, monospace; padding: 1px 5px; }
+.mused { position: absolute; left: 4px; bottom: 4px; background: #12a26a; color: #fff; border-radius: 4px; font-size: 10px; padding: 1px 5px; }
+.mdel { position: absolute; right: 4px; top: 4px; background: #000a; border: 0; border-radius: 5px; color: #fff; padding: 3px; opacity: 0; cursor: pointer; }
+.mcard:hover .mdel { opacity: 1; }
+.mplay { position: absolute; inset: auto auto 4px 4px; background: #ffd60a; color: #111; border: 0; border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; cursor: pointer; }
+.mname { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mcard small { opacity: .6; font-size: 11px; }
+.mactions { display: flex; gap: 4px; margin-top: 2px; }
+.mactions button { flex: 1; font-size: 11px; padding: 3px 4px; }
+.dialog { width: min(520px, 94vw); max-height: 88vh; overflow: auto; background: var(--panel, #1b2130); border: 1px solid var(--line, #333); border-radius: 12px; padding: 14px 18px 16px; display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.dialog-head { display: flex; align-items: center; gap: 8px; }
+.dialog-head .icon { margin-left: auto; }
+.dialog label.txt, .dialog label.sel, .dialog .field { display: grid; gap: 4px; font-size: 12px; }
+.dialog label span, .dialog .field > span { opacity: .75; }
+.dialog input[type=text], .dialog label.txt input, .dialog select { width: 100%; }
+.dialog .filelist { margin: 4px 0 0; padding-left: 18px; font-size: 12px; max-height: 90px; overflow: auto; }
+.dialog .err { color: #ff6b6b; margin: 0; font-size: 12.5px; }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 8px; }
