@@ -23,6 +23,7 @@ import { REGISTRY } from '@cls/engine/src/components/registry';
 import { designElement, listElements, saveElement } from './elements';
 import { loadContext } from './context';
 import { LIB, icons, libraryOp, memeCatalog, sfxCatalog } from './library';
+import { createProject, deleteMedia, listMedia, receiveUpload } from './media';
 
 const require = createRequire(import.meta.url);
 const handler = require('serve-handler');
@@ -128,6 +129,17 @@ const readBody = (req: http.IncomingMessage) =>
 type Handler = (body: any, url: URL) => unknown | Promise<unknown>;
 const routes: Record<string, Handler> = {
 	'GET /api/projects': () => core.listProjects(),
+
+	// Premiere-style project setup: a named project with its own sequence settings and an empty timeline.
+	'POST /api/projects/new': (b) => ({ dir: createProject(core.PROJECTS, b) }),
+	'GET /api/media': (_b, url) => ({ items: listMedia(core.safeDir(url.searchParams.get('dir') ?? '')) }),
+	'POST /api/media/delete': async (b) => {
+		const { doc } = await openDoc(b.dir);
+		const name = String(b.name ?? '');
+		if (JSON.stringify(doc.edd).includes(`media/${name}`)) throw new Error(`"${name}" is used in the edit: remove it from the timeline first`);
+		deleteMedia(doc.dir, name);
+		return { ok: true };
+	},
 
 	'POST /api/open': async (b) => {
 		const { opened, doc } = await openDoc(b.dir);
@@ -243,6 +255,17 @@ http
 				res.write(': connected\n\n');
 				clients.add(res);
 				req.on('close', () => clients.delete(res));
+				return;
+			}
+			// Uploads stream straight to disk (a clip can be gigabytes), so they bypass the JSON body reader.
+			if (url.pathname === '/api/media/upload' && req.method === 'POST') {
+				try {
+					const dir = core.safeDir(url.searchParams.get('dir') ?? '');
+					const item = await receiveUpload(dir, url.searchParams.get('name') ?? '', req);
+					res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(item));
+				} catch (e) {
+					res.writeHead(400, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
+				}
 				return;
 			}
 			const route = routes[`${req.method} ${url.pathname}`];

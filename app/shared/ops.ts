@@ -77,6 +77,15 @@ export const Op = z.discriminatedUnion('op', [
 		id: Id,
 		motion: z.object({ dx: z.number().optional(), dy: z.number().optional(), scale: z.number().optional(), rotate: z.number().optional(), opacity: z.number().optional(), ease: LayerMotion.shape.ease.optional() }).nullable().describe('the pose the layer eases to by the end of its life (dx/dy in % of the frame, scale, degrees, opacity 0-1); null removes the animation'),
 	}),
+	z.object({
+		op: z.literal('add_footage'),
+		src: z.string().describe('project-relative file in media/, e.g. media/clip.mp4'),
+		duration: z.number().positive().describe('length of the clip in seconds (images: how long to show them)'),
+		kind: z.enum(['video', 'image']).default('video'),
+		has_audio: z.boolean().default(false).describe('the clip has its own sound: it is brought along (as the voice track if the sequence has none yet, else as a sound at the clip start)'),
+	}),
+	z.object({ op: z.literal('set_voice'), src: z.string().nullable().describe('project-relative audio/video file to use as the main audio track, or null to remove it'), volume: z.number().min(0).max(2).optional() }),
+	z.object({ op: z.literal('set_format'), width: z.number().int().min(16).max(7680).optional(), height: z.number().int().min(16).max(4320).optional(), fps: z.number().int().min(1).max(120).optional() }),
 	z.object({ op: z.literal('add_marker'), at: z.number(), label: z.string().optional() }),
 	z.object({ op: z.literal('remove_marker'), id: z.string().describe('marker id, e.g. mk1') }),
 	z.object({ op: z.literal('set_enabled'), id: Id, enabled: z.boolean().describe('false keeps the item in the edit but stops it rendering / sounding; a grouped item switches its whole group') }),
@@ -676,6 +685,51 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 				sg.layer.meta.origin = 'user';
 			}
 			return { ok: true, op, id: baseId(op.id), message: op.motion === null ? `removed the motion on ${op.id}` : `animated ${op.id}` };
+		}
+		case 'add_footage': {
+			if (!/^media\/[^/\\]+$/.test(op.src)) throw new Error('footage must be a file inside the project media folder');
+			// A brand-new project holds one black placeholder beat; the first footage replaces it.
+			const placeholder = edd.beats.every((b) => b.base.kind === 'color' && b.meta.reason === 'empty sequence' && !b.layers.length && !b.camera.length && !b.moods.length);
+			if (placeholder) edd.beats = [];
+			const start = edd.beats.length ? edd.beats[edd.beats.length - 1].end : 0;
+			const CHUNK = 20; // beats are render-cache chunks: long clips are cut into ~20 s ones so a small edit re-renders only a small part
+			let n = Math.max(0, ...edd.beats.map((b) => Number(/^b(\d+)$/.exec(b.id)?.[1] ?? 0)));
+			// ~20 s each; the remainder is folded into the last chunk so no beat is ever a sliver.
+			const pieces = op.kind === 'image' ? 1 : Math.max(1, Math.floor(op.duration / CHUNK));
+			const chunks = Array.from({ length: pieces }, (_, i) => (i === pieces - 1 ? op.duration - CHUNK * (pieces - 1) : CHUNK));
+			if (op.kind === 'image') chunks[0] = op.duration;
+			let t = 0;
+			for (const len of chunks) {
+				edd.beats.push({
+					id: `b${++n}`, start: r3(start + t), end: r3(start + t + len),
+					base: op.kind === 'image' ? { kind: 'image', src: op.src, fit: 'contain' } : { kind: 'video', src: op.src, from: r3(t), fit: 'cover' },
+					pacing: 'standard', camera: [], layers: [], moods: [], meta: { origin: 'user', locked: false, reason: `footage ${op.src}` },
+				});
+				t += len;
+			}
+			if (op.has_audio && op.kind === 'video') {
+				if (!edd.audio.voice && start === 0) edd.audio.voice = { src: op.src, start: 0, from: 0, volume: 1 };
+				else {
+					const used = new Set(edd.audio.sfx.map((s) => s.id));
+					let k = edd.audio.sfx.length + 1;
+					while (used.has(`sfx${k}`)) k++;
+					edd.audio.sfx.push({ id: `sfx${k}`, src: op.src, at: r3(start), volume: 1, role: 'clip audio', meta: meta(author, `sound of ${op.src}`) });
+					edd.audio.sfx.sort((a, z) => a.at - z.at);
+				}
+			}
+			return { ok: true, op, id: `b${n}`, message: `added ${op.kind} ${op.src} (${r3(op.duration)} s) at ${r3(start)} s` };
+		}
+		case 'set_voice': {
+			if (op.src === null) delete edd.audio.voice;
+			else {
+				if (!/^media\/[^/\\]+$/.test(op.src)) throw new Error('audio must be a file inside the project media folder');
+				edd.audio.voice = { src: op.src, start: 0, from: 0, volume: op.volume ?? edd.audio.voice?.volume ?? 1 };
+			}
+			return { ok: true, op, message: op.src === null ? 'removed the main audio' : `main audio is now ${op.src}` };
+		}
+		case 'set_format': {
+			edd.format = { width: op.width ?? edd.format.width, height: op.height ?? edd.format.height, fps: op.fps ?? edd.format.fps };
+			return { ok: true, op, message: `sequence is now ${edd.format.width}×${edd.format.height} at ${edd.format.fps} fps` };
 		}
 		case 'add_marker': {
 			const used = new Set(edd.markers.map((m) => m.id));
