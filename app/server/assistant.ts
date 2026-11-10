@@ -199,6 +199,7 @@ const OpSchemas = (stickers: string[], roles: string[]) => {
 		o('group', { item_ids: z.array(z.string()).min(2).describe('ids from ITEMS to link so they move, copy, lock and delete together, e.g. a zoom and the spotlight on it') }),
 		o('ungroup', { item_id: z.string().describe('any member of the group') }),
 		o('set_enabled', { item_id: z.string(), enabled: z.boolean().describe('false = switch off without deleting (to compare), true = switch back on') }),
+		o('animate', { item_id: z.string().describe('a layer id from ITEMS'), move_x: z.number().nullable().describe('drift right (+) or left (-) by this % of the frame width by the end'), move_y: z.number().nullable().describe('drift down (+) or up (-) by this % of the frame height'), scale: z.number().nullable().describe('size multiplier by the end, e.g. 1.2 = slowly grows 20%, 0.8 shrinks'), rotate: z.number().nullable().describe('extra degrees by the end'), fade_to: z.number().nullable().describe('opacity by the end, 0-1 (0 = fades away)'), remove: z.boolean().nullable().describe('true = take its animation away') }),
 		o('add_marker', { at: AnchorSchema, label: z.string().nullable() }),
 		o('create_element', { at: AnchorSchema, seconds: z.number().describe('how long it stays, e.g. 3'), brief: z.string().describe('what to make, in the users own words, e.g. "small animated speedometer showing 78%"') }),
 		o('refine_element', { item_id: z.string().describe('an id from ITEMS whose type is Generated'), instruction: z.string() }),
@@ -255,6 +256,7 @@ Rules:
 - Items can be GROUPED (shown as group=g1 in ITEMS): a grouped item moves, copies, locks and deletes with its group. To make a zoom and an effect on the same spot (e.g. a spotlight) work together, add both and then use group on their ids, or group existing ones. Use ungroup to split them.
 - "turn off / mute / hide / compare without" = set_enabled false (it stays in the edit); "turn it back on" = set_enabled true. Use remove only when they want it gone.
 - "mark / bookmark / chapter at X" = add_marker.
+- "slowly zoom in on it / drift / slide across / fade away as it ends" = animate on a LAYER id (not a zoom): it eases from where it sits to the pose you give by the end of its time on screen. Slow push-in = scale 1.15; drift right = move_x 15; fade out = fade_to 0.
 - "say" is one friendly sentence describing what you will do.`;
 
 async function askModel(a: AssistantArgs, ctx: Ctx): Promise<AssistantReply> {
@@ -350,6 +352,18 @@ async function toOps(mo: ModelOp, a: AssistantArgs, ctx: Ctx): Promise<Op[]> {
 		}
 		case 'ungroup': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'ungroup', id: mo.item_id }];
 		case 'set_enabled': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'set_enabled', id: mo.item_id, enabled: !!mo.enabled }];
+		case 'animate': {
+			if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`);
+			if (mo.remove) return [{ op: 'set_motion', id: mo.item_id, motion: null }];
+			const m: Record<string, number> = {};
+			if (typeof mo.move_x === 'number') m.dx = mo.move_x;
+			if (typeof mo.move_y === 'number') m.dy = mo.move_y;
+			if (typeof mo.scale === 'number') m.scale = Math.max(0.05, Math.min(10, mo.scale));
+			if (typeof mo.rotate === 'number') m.rotate = mo.rotate;
+			if (typeof mo.fade_to === 'number') m.opacity = Math.max(0, Math.min(1, mo.fade_to));
+			if (!Object.keys(m).length) throw new Error('say how it should move, grow, turn or fade');
+			return [{ op: 'set_motion', id: mo.item_id, motion: m }];
+		}
 		case 'add_marker': return [{ op: 'add_marker', at: at(mo.at, false), label: mo.label ?? undefined }];
 		case 'lock': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'lock', id: mo.item_id, locked: !!mo.locked }];
 		case 'set_text': if (!find(a.edd, mo.item_id)) throw new Error(`there is no item ${mo.item_id}`); return [{ op: 'set_props', id: mo.item_id, props: { text: mo.text } }];
