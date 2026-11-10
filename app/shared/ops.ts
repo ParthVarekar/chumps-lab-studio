@@ -9,7 +9,7 @@
  * continuation segments. Callers never think about beats.
  */
 import { z } from 'zod';
-import { Edd, EnterPreset, ExitPreset, Direction, MoodKind, type Beat, type Layer, type SfxClip } from '@cls/engine/src/edd/schema';
+import { Edd, LayerMotion, EnterPreset, ExitPreset, Direction, MoodKind, type Beat, type Layer, type SfxClip } from '@cls/engine/src/edd/schema';
 
 // ------------------------------------------------------------------ ops
 
@@ -72,6 +72,11 @@ export const Op = z.discriminatedUnion('op', [
 	z.object({ op: z.literal('duplicate'), id: Id, at: z.number().optional().describe('global start of the copy (default: right after the original)') }),
 	z.object({ op: z.literal('split'), id: Id, at: z.number() }),
 	z.object({ op: z.literal('lock'), id: Id, locked: z.boolean() }),
+	z.object({
+		op: z.literal('set_motion'),
+		id: Id,
+		motion: z.object({ dx: z.number().optional(), dy: z.number().optional(), scale: z.number().optional(), rotate: z.number().optional(), opacity: z.number().optional(), ease: LayerMotion.shape.ease.optional() }).nullable().describe('the pose the layer eases to by the end of its life (dx/dy in % of the frame, scale, degrees, opacity 0-1); null removes the animation'),
+	}),
 	z.object({ op: z.literal('add_marker'), at: z.number(), label: z.string().optional() }),
 	z.object({ op: z.literal('remove_marker'), id: z.string().describe('marker id, e.g. mk1') }),
 	z.object({ op: z.literal('set_enabled'), id: Id, enabled: z.boolean().describe('false keeps the item in the edit but stops it rendering / sounding; a grouped item switches its whole group') }),
@@ -193,6 +198,7 @@ function placeLayer(edd: Edd, layer: Layer, start: number, end: number) {
 		const s = Math.max(start, b.start);
 		const e = Math.min(end, b.end);
 		const seg = clone(layer);
+		if (seg.motion) seg.motion = { ...seg.motion, span: [r3(start), r3(end)] }; // keep the animation's span equal to the layer's whole life
 		seg.id = first ? root : `${root}-${b.id}`;
 		seg.enter.at = r3(s - b.start);
 		if (!first) {
@@ -657,6 +663,19 @@ function applyOne(edd: Edd, op: Op, author: 'user' | 'ai'): ApplyNote {
 			else if (f.kind === 'mood') f.beat!.moods[f.index!].meta.locked = op.locked;
 			else f.sfx!.meta.locked = op.locked;
 			return { ok: true, op, id: op.id, message: `${op.locked ? 'locked' : 'unlocked'} ${op.id}` };
+		}
+		case 'set_motion': {
+			const f = find(edd, op.id);
+			if (!f || f.kind !== 'layer') throw new Error(`${op.id} is not a layer`);
+			const segs = segments(edd, op.id);
+			const span: [number, number] = [r3(segs[0].start), r3(segs[segs.length - 1].end)];
+			for (const sg of segs) {
+				if (sg.layer.meta.locked) throw new Error(`${op.id} is locked`);
+				if (op.motion === null) delete sg.layer.motion;
+				else sg.layer.motion = LayerMotion.parse({ ...(sg.layer.motion ?? {}), ...Object.fromEntries(Object.entries(op.motion).filter(([, v]) => v !== undefined)), span });
+				sg.layer.meta.origin = 'user';
+			}
+			return { ok: true, op, id: baseId(op.id), message: op.motion === null ? `removed the motion on ${op.id}` : `animated ${op.id}` };
 		}
 		case 'add_marker': {
 			const used = new Set(edd.markers.map((m) => m.id));

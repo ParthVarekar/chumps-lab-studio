@@ -57,6 +57,18 @@ export const Exit = z.object({
  */
 export const Space = z.enum(['stage', 'screen']);
 
+/** Premiere's Motion keyframes, two of them: the layer starts as placed and eases to this pose by the end of its life (`span`, global seconds, kept up to date by the editor). */
+export const LayerMotion = z.object({
+	dx: z.number().default(0).describe('end offset, % of the frame width'),
+	dy: z.number().default(0).describe('end offset, % of the frame height'),
+	scale: z.number().min(0.05).max(10).default(1),
+	rotate: z.number().default(0).describe('extra degrees by the end'),
+	opacity: z.number().min(0).max(1).default(1).describe('opacity by the end (fade out by going to 0)'),
+	ease: z.enum(['linear', 'out', 'inout', 'expo', 'inout-expo']).default('inout-expo'),
+	span: z.tuple([z.number(), z.number()]).optional(),
+});
+export type LayerMotion = z.infer<typeof LayerMotion>;
+
 export const Layer = z.object({
 	id: z.string(),
 	component: z.string().describe('name in the component registry'),
@@ -66,6 +78,7 @@ export const Layer = z.object({
 	z: z.number().int().default(10),
 	enter: Enter,
 	exit: Exit.optional(),
+	motion: LayerMotion.optional(),
 	meta: NodeMeta.default({ origin: 'ai', locked: false }),
 });
 export type Layer = z.infer<typeof Layer>;

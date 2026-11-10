@@ -249,6 +249,28 @@ const LayerForm: React.FC<{ edd: Edd; id: string; dis: boolean }> = ({ edd, id, 
 					<Num label="Layer" value={l.z} step={1} disabled={dis} onCommit={(n) => go({ op: 'set_style', id, z: Math.round(n) })} />
 				</div>
 			</Section>
+			<Section title="Motion (keyframes)">
+				<p className="note">Starts as placed and eases to this pose by the end of the item. Leave all at rest to switch it off.</p>
+				{(() => {
+					const mk = l.motion;
+					const set = (patch: Record<string, number | string>) => go({ op: 'set_motion', id, motion: patch as never });
+					return (
+						<>
+							<div className="row3">
+								<Num label="Move x" value={mk?.dx ?? 0} step={1} unit="%" disabled={dis} onCommit={(n) => set({ dx: n })} />
+								<Num label="Move y" value={mk?.dy ?? 0} step={1} unit="%" disabled={dis} onCommit={(n) => set({ dy: n })} />
+								<Num label="Scale" value={mk?.scale ?? 1} step={0.05} min={0.05} max={10} disabled={dis} onCommit={(n) => set({ scale: n })} />
+							</div>
+							<div className="row3">
+								<Num label="Rotate" value={mk?.rotate ?? 0} step={1} unit="deg" disabled={dis} onCommit={(n) => set({ rotate: n })} />
+								<Num label="Fade to" value={mk?.opacity ?? 1} step={0.1} min={0} max={1} disabled={dis} onCommit={(n) => set({ opacity: n })} />
+								<Select label="Ease" value={mk?.ease ?? 'inout-expo'} options={['linear', 'out', 'inout', 'expo', 'inout-expo']} disabled={dis} onChange={(v) => set({ ease: v })} />
+							</div>
+							{mk ? <div className="actions"><button disabled={dis} onClick={() => go({ op: 'set_motion', id, motion: null })}>Remove motion</button></div> : null}
+						</>
+					);
+				})()}
+			</Section>
 		</>
 	);
 };

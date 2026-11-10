@@ -4,6 +4,7 @@ import { REGISTRY } from '../components/registry';
 import { CameraScaleContext, useAsset, useStudio } from '../context';
 import type { BaseLayer, Beat, Layer } from '../edd/schema';
 import { toFrame } from '../edd/timing';
+import { easeBy } from '../element/motion';
 import { cameraAt } from '../motion/camera';
 import { layerMotion } from '../motion/enter';
 import { moodEffects } from '../motion/moods';
@@ -43,6 +44,12 @@ const LayerView: React.FC<{ layer: Layer; frame: number; beat: Beat }> = ({ laye
 	const filterId = `mb-${layer.id}`;
 	const Comp = def.Component;
 	const elapsed = (frame - toFrame(layer.enter.at, fps)) / fps;
+	// Motion keyframes: progress over the layer's whole life (global seconds), eased, applied on top of its entrance and idle motion.
+	const mk = layer.motion;
+	const gt = beat.start + frame / fps;
+	const mp = mk?.span && mk.span[1] > mk.span[0] ? easeBy(Math.min(1, Math.max(0, (gt - mk.span[0]) / (mk.span[1] - mk.span[0]))), mk.ease) : 0;
+	const mx = mk ? (mk.dx * mp * W) / 100 : 0, my = mk ? (mk.dy * mp * H) / 100 : 0;
+	const mScale = mk ? 1 + (mk.scale - 1) * mp : 1, mRot = mk ? mk.rotate * mp : 0, mOp = mk ? 1 + (mk.opacity - 1) * mp : 1;
 	const length = (layer.exit ? layer.exit.at + layer.exit.durationFrames / fps : beat.end - beat.start) - layer.enter.at;
 	return (
 		<div
@@ -54,8 +61,8 @@ const LayerView: React.FC<{ layer: Layer; frame: number; beat: Beat }> = ({ laye
 				width: `${layer.box.w}%`,
 				height: `${layer.box.h}%`,
 				zIndex: layer.z,
-				opacity: m.opacity,
-				transform: `translate(${m.tx}px, ${m.ty}px) rotate(${layer.box.rotation + m.rotate}deg) scale(${m.scale})`,
+				opacity: m.opacity * mOp,
+				transform: `translate(${m.tx + mx}px, ${m.ty + my}px) rotate(${layer.box.rotation + m.rotate + mRot}deg) scale(${m.scale * mScale})`,
 				filter: blur ? `url(#${filterId})` : undefined,
 			}}
 		>
