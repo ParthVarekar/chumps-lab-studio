@@ -1,5 +1,5 @@
 import { Timeline as XTimeline, type TimelineState } from '@xzdarcy/react-timeline-editor';
-import { Copy, ListX, Flag, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
+import { Copy, ListX, MousePointer2, ScissorsLineDashed, Flag, Eye, EyeOff, Link2, Link2Off, Lock, Minus, Plus, Scissors, Trash2, Unlock, Magnet, Maximize2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { fmt, useStudio } from '../store';
@@ -55,9 +55,16 @@ export const TimelinePanel: React.FC = () => {
 	const [peaks, setPeaks] = useState<number[]>([]);
 	const [scrollTop, setScrollTop] = useState(0);
 	const [snap, setSnap] = useState(true);
+	const tool = useStudio((s) => s.tool);
+	const range = useStudio((s) => s.range);
+	useEffect(() => {
+		const flip = () => setSnap((v) => !v);
+		window.addEventListener('toggle-snap', flip);
+		return () => window.removeEventListener('toggle-snap', flip);
+	}, []);
 
 	const duration = edd ? edd.beats[edd.beats.length - 1].end : 0;
-	const { rows, rowMeta, items } = useMemo(() => (edd ? buildRows(edd, duration) : { rows: [], rowMeta: {}, items: {} }), [edd, duration]);
+	const { rows, rowMeta, items } = useMemo(() => (edd ? buildRows(edd, duration, range) : { rows: [], rowMeta: {}, items: {} }), [edd, duration, range]);
 	const draftIds = useMemo(() => new Set((draft?.notes ?? []).filter((n) => n.ok && n.id).map((n) => n.id!)), [draft]);
 
 	useEffect(() => {
@@ -71,15 +78,25 @@ export const TimelinePanel: React.FC = () => {
 	const scale = zoom >= 90 ? 1 : zoom >= 35 ? 2 : 5;
 	const seek = (t: number) => useStudio.getState().seekTo(Math.max(0, Math.min(duration, t)));
 	const fit = () => set({ zoom: Math.max(8, Math.min(240, ((wrap.current?.clientWidth ?? 900) - 140) / Math.max(1, duration))) });
+	const fitRef = useRef(fit);
+	fitRef.current = fit;
+	useEffect(() => {
+		const go = () => fitRef.current();
+		window.addEventListener('fit-timeline', go);
+		return () => window.removeEventListener('fit-timeline', go);
+	}, []);
 
 	const sel = selection.filter((id) => real && find(real, id));
 	const one = sel.length === 1 ? sel[0] : null;
 	const lockedAll = sel.length > 0 && sel.every((id) => items[id]?.locked);
 
 	return (
-		<div className="timeline" ref={wrap}>
+		<div className={`timeline${tool === 'razor' ? ' razor' : ''}`} ref={wrap}>
 			<div className="tl-toolbar">
-				<button title="Split at playhead (S)" disabled={!one || items[one]?.kind !== 'layer'} onClick={() => one && run([{ op: 'split', id: one, at: useStudio.getState().time }])}><Scissors size={15} /> Split</button>
+				<button className={tool === 'select' ? 'on' : ''} title="Selection tool (V)" onClick={() => useStudio.getState().set({ tool: 'select', status: '' })}><MousePointer2 size={15} /></button>
+				<button className={tool === 'razor' ? 'on' : ''} title="Razor tool (C): click a clip to cut it" onClick={() => useStudio.getState().set({ tool: 'razor', status: 'Razor: click a clip to cut it there. V or Esc leaves.' })}><ScissorsLineDashed size={15} /></button>
+				<span className="sep" />
+				<button title="Split at playhead (Ctrl+K)" disabled={!one || items[one]?.kind !== 'layer'} onClick={() => one && run([{ op: 'split', id: one, at: useStudio.getState().time }])}><Scissors size={15} /> Split</button>
 				<button title="Duplicate (Ctrl+D)" disabled={!sel.length} onClick={() => run(oneOfEach(real!, sel).map((id) => ({ op: 'duplicate' as const, id })))}><Copy size={15} /> Duplicate</button>
 				<button title="Delete (Del)" disabled={!sel.length} onClick={() => run(oneOfEach(real!, sel).map((id) => ({ op: 'remove' as const, id })))}><Trash2 size={15} /> Delete</button>
 				<button title="Delete and close the gap: later items slide left (Shift+Del)" disabled={!sel.length} onClick={() => run(rippleOps(real!, sel))}><ListX size={15} /> Ripple</button>
@@ -121,8 +138,14 @@ export const TimelinePanel: React.FC = () => {
 							onClickTimeArea={(t) => { seek(t); return true; }}
 							onCursorDrag={(t) => seek(t)}
 							onClickRow={(e) => { if ((e.target as HTMLElement).closest('.timeline-editor-action')) return; select([]); }}
-							onClickAction={(e, { action }) => {
+							onClickAction={(e, { action, time }) => {
 								if (action.id.startsWith('marker:')) { seek(action.start); return; }
+								if (action.id === 'range:io') return;
+								if (tool === 'razor') {
+									// Razor: cut the clicked layer where it was clicked (a zoom or sound cannot be cut: nothing happens).
+									if (real && find(real, action.id)?.kind === 'layer') void run([{ op: 'split', id: action.id, at: time }]);
+									return;
+								}
 								if (!items[action.id]) return;
 								const ev = e as unknown as MouseEvent;
 								select([action.id], ev.shiftKey || ev.ctrlKey);
@@ -132,6 +155,7 @@ export const TimelinePanel: React.FC = () => {
 							getActionRender={(action) => {
 								if (action.id === 'voice') return <div className="clip clip-voice"><Waveform peaks={peaks} duration={duration} /></div>;
 								if (action.id.startsWith('marker:')) return <div className="clip clip-marker" title="Marker: click to jump here. Shift+M at the playhead removes it"><Flag size={10} /><span>{real?.markers.find((k) => k.id === action.id.slice(7))?.label}</span></div>;
+								if (action.id === 'range:io') return <div className="clip clip-range">In–Out</div>;
 								if (action.id.startsWith('beat:')) return <div className="clip clip-beat">{action.id.slice(5)}</div>;
 								const m = items[action.id];
 								const cls = ['clip', `clip-${action.effectId}`, selection.includes(action.id) ? 'selected' : '', m?.locked ? 'locked' : '', m?.disabled ? 'off' : '', m?.group ? `grouped g-${hue(m.group)}` : '', m?.origin === 'user' ? 'mine' : '', draftIds.has(action.id) ? 'ghost' : ''].filter(Boolean).join(' ');

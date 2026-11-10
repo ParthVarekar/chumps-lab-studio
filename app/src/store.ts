@@ -55,6 +55,14 @@ interface State {
 	elements: ElementEntry[];
 	designing: string | null;
 	seekTo: (t: number) => void; // installed by the preview
+	playPause: (want?: boolean) => void; // installed by the preview: toggle, or force play / pause
+	/** Active tool: V selects and moves, C is the razor (a click on a clip cuts it there). */
+	tool: 'select' | 'razor';
+	/** Premiere-style In / Out marks (seconds, or null): Lift and Extract act on what lies between them. */
+	range: { in: number | null; out: number | null };
+	/** Shuttle speed: 1, 2, 4 forward; negative plays backwards (the J key). */
+	rate: number;
+	help: boolean; // the shortcut sheet
 	init: () => Promise<void>;
 	open: (dir: string) => Promise<void>;
 	run: (ops: Op[], note?: string, o?: { author?: 'user' | 'ai' }) => Promise<ApplyNote[]>;
@@ -83,6 +91,8 @@ export const useStudio = create<State>((set, get) => ({
 	draft: null, pick: null, region: null, leftTab: 'add', rightTab: 'inspector', msgs: [], guides: false,
 	schemas: {}, elements: [], designing: null,
 	seekTo: () => {},
+	playPause: () => {},
+	tool: 'select', range: { in: null, out: null }, rate: 1, help: false,
 
 	set: (p) => set(p),
 

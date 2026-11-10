@@ -259,3 +259,19 @@ button.wide { width: 100%; justify-content: center; }
 .tl-label.mutable { cursor: pointer; }
 .tl-label.mutable:hover { color: var(--text); }
 .tl-label.muted { text-decoration: line-through; opacity: 0.5; }
+
+/* Premiere-style extras: razor cursor, In-Out band, shortcut sheet */
+.timeline.razor .timeline-editor-action, .timeline.razor .clip { cursor: crosshair; }
+.tl-toolbar button.on { background: var(--accent, #ffd60a); color: #111; }
+.clip-range { background: rgba(255, 214, 10, 0.28); border: 1px dashed #ffd60a; color: #ffd60a; justify-content: center; }
+.statusbar { display: flex; justify-content: space-between; gap: 12px; }
+.statusbar .hint { opacity: 0.5; }
+.help-backdrop { position: fixed; inset: 0; z-index: 9999; background: rgba(0, 0, 0, 0.6); display: grid; place-items: center; }
+.help { width: min(960px, 94vw); max-height: 86vh; overflow: auto; background: var(--panel, #1b2130); border: 1px solid var(--line, #333); border-radius: 12px; padding: 14px 18px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.help-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.help-head .note { flex: 1; opacity: 0.6; font-size: 12px; }
+.help-cols { columns: 2 380px; column-gap: 28px; }
+.help section { break-inside: avoid; margin-bottom: 14px; }
+.help h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+.krow { display: flex; gap: 10px; align-items: baseline; padding: 2px 0; font-size: 12.5px; }
+.krow kbd { flex: none; min-width: 120px; font: 600 11.5px ui-monospace, Consolas, monospace; background: #0003; border: 1px solid #fff2; border-radius: 5px; padding: 1px 6px; color: #ffd60a; }

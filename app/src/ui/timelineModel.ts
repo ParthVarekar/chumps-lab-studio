@@ -7,7 +7,7 @@ export interface RowMeta { label: string; kind: 'video' | 'marker' | 'voice' | '
 export interface ItemMeta { label: string; kind: 'layer' | 'camera' | 'mood' | 'sfx'; locked: boolean; origin: string; component?: string; group?: string; disabled?: boolean }
 
 export const EFFECTS: Record<string, TimelineEffect> = Object.fromEntries(
-	['beat', 'marker', 'voice', 'camera', 'mood', 'sfx', 'Title', 'KineticWord', 'Header', 'PopImage', 'MemeSticker', 'EvidenceCard', 'MemeCut', 'UILabel', 'ColorChip', 'CodeBlock', 'Terminal', 'BarChart', 'Gauge', 'NeuralNet', 'Highlight', 'Spotlight', 'BlurRegion', 'Arrow', 'ClickRipple', 'StepBadge', 'LowerThird', 'Flash', 'FadeBlack', 'Wipe', 'Reveal', 'Glitch', 'Vignette', 'Letterbox', 'Captions', 'Generated'].map((k) => [k, { id: k, name: k }]),
+	['beat', 'marker', 'range', 'voice', 'camera', 'mood', 'sfx', 'Title', 'KineticWord', 'Header', 'PopImage', 'MemeSticker', 'EvidenceCard', 'MemeCut', 'UILabel', 'ColorChip', 'CodeBlock', 'Terminal', 'BarChart', 'Gauge', 'NeuralNet', 'Highlight', 'Spotlight', 'BlurRegion', 'Arrow', 'ClickRipple', 'StepBadge', 'LowerThird', 'Flash', 'FadeBlack', 'Wipe', 'Reveal', 'Glitch', 'Vignette', 'Letterbox', 'Captions', 'Generated'].map((k) => [k, { id: k, name: k }]),
 );
 
 const short = (s: unknown, n = 22) => String(s ?? '').replace(/\s+/g, ' ').slice(0, n);
@@ -22,7 +22,7 @@ function lanes<T extends { start: number; end: number }>(items: T[]): T[][] {
 	return out;
 }
 
-export function buildRows(edd: Edd, duration: number): { rows: TimelineRow[]; rowMeta: Record<string, RowMeta>; items: Record<string, ItemMeta> } {
+export function buildRows(edd: Edd, duration: number, range?: { in: number | null; out: number | null }): { rows: TimelineRow[]; rowMeta: Record<string, RowMeta>; items: Record<string, ItemMeta> } {
 	const rows: TimelineRow[] = [];
 	const rowMeta: Record<string, RowMeta> = {};
 	const items: Record<string, ItemMeta> = {};
@@ -32,6 +32,10 @@ export function buildRows(edd: Edd, duration: number): { rows: TimelineRow[]; ro
 	};
 
 	add('beats', 'Video', 'video', edd.beats.map((b) => ({ id: `beat:${b.id}`, start: b.start, end: b.end, effectId: 'beat', movable: false, flexible: false })));
+	if (range && (range.in !== null || range.out !== null)) {
+		const a = range.in ?? 0, b = range.out ?? duration;
+		if (b > a) add('range', 'In–Out', 'marker', [{ id: 'range:io', start: a, end: b, effectId: 'range', movable: false, flexible: false }]);
+	}
 	if (edd.markers.length) add('markers', 'Markers', 'marker', edd.markers.map((m) => ({ id: `marker:${m.id}`, start: m.at, end: m.at + 1.2, effectId: 'marker', movable: false, flexible: false })));
 	add('voice', 'Voice', 'voice', edd.audio.voice ? [{ id: 'voice', start: 0, end: duration, effectId: 'voice', movable: false, flexible: false }] : []);
 

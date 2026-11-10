@@ -22,6 +22,7 @@ export const Preview: React.FC = () => {
 	const pick = useStudio((s) => s.pick);
 	const playing = useStudio((s) => s.playing);
 	const time = useStudio((s) => s.time);
+	const rate = useStudio((s) => s.rate);
 	const set = useStudio((s) => s.set);
 	const run = useStudio((s) => s.run);
 	const place = useStudio((s) => s.place);
@@ -68,6 +69,14 @@ export const Preview: React.FC = () => {
 		p.addEventListener('play', onPlay);
 		p.addEventListener('pause', onPause);
 		set({
+			playPause: (want?: boolean) => {
+				const pl = player.current;
+				if (!pl) return;
+				const on = pl.isPlaying();
+				if (want === undefined) pl.toggle();
+				else if (want && !on) pl.play();
+				else if (!want && on) pl.pause();
+			},
 			seekTo: (t: number) => {
 				player.current?.seekTo(Math.round(t * fps));
 				set({ time: t });
@@ -193,6 +202,7 @@ export const Preview: React.FC = () => {
 						inputProps={{ edd, assetBase }}
 						durationInFrames={totalFrames(edd)}
 						fps={fps}
+						playbackRate={rate > 0 ? Math.min(4, rate) : 1}
 						compositionWidth={edd.format.width}
 						compositionHeight={edd.format.height}
 						style={{ width: size.w, height: size.h, background: '#000' }}

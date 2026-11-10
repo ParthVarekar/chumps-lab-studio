@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Edd } from '@cls/engine/src/edd/schema';
-import { applyOps, find, metaOfItem, rippleOps, segments, spanOf, withGroup, type Op } from '../shared/ops';
+import { allItemIds, applyOps, find, metaOfItem, rangeOps, rippleOps, segments, spanOf, withGroup, type Op } from '../shared/ops';
 
 const path = process.env.EDD ?? 'D:/ChumpsLabStudio/projects/raw-loop-kokoro/edd.json';
 const edd0 = Edd.parse(JSON.parse(readFileSync(path, 'utf8')));
@@ -96,4 +96,16 @@ assert.equal(find(rr, rp.notes[0].id!), null, 'the item is gone');
 assert.ok(Math.abs(spanOf(rr, rp.notes[1].id!)!.start - 23) < 0.05, 'the later item slid left by the hole (2 s)');
 assert.ok(Math.abs(spanOf(rr, rp.notes[2].id!)!.start - 8) < 0.05, 'an earlier item did not move');
 assert.ok(Math.abs(spanOf(rr, rp.notes[3].id!)!.start - 40) < 0.05, 'a locked item did not move');
+// 11. lift / extract between In and Out
+const rg = run(edd0, { op: 'add_layer', component: 'Title', at: 20, until: 21, props: { text: 'a' } }, { op: 'add_layer', component: 'Title', at: 24, until: 25, props: { text: 'b' } }, { op: 'add_layer', component: 'Title', at: 30, until: 31, props: { text: 'c' } }, { op: 'add_layer', component: 'Title', at: 22, until: 28, props: { text: 'straddles' } });
+const lifted = applyOps(rg.edd, rangeOps(rg.edd, 19, 26, false)).edd;
+assert.equal(find(lifted, rg.notes[0].id!), null, 'lift removes an item inside the range');
+assert.equal(find(lifted, rg.notes[1].id!), null);
+assert.ok(find(lifted, rg.notes[2].id!), 'an item outside is untouched');
+assert.ok(find(lifted, rg.notes[3].id!), 'an item that straddles the edge is not removed');
+assert.ok(Math.abs(spanOf(lifted, rg.notes[2].id!)!.start - 30) < 0.05, 'lift leaves the gap');
+const extracted = applyOps(rg.edd, rangeOps(rg.edd, 19, 26, true)).edd;
+assert.ok(Math.abs(spanOf(extracted, rg.notes[2].id!)!.start - 23) < 0.05, 'extract slides later items left by the range width (7 s)');
+assert.equal(rangeOps(rg.edd, 5, 5, true).length, 0, 'an empty range does nothing');
+assert.equal(allItemIds(rg.edd).filter((i) => find(rg.edd, i)?.kind === 'layer').length >= 4, true);
 console.log('ops: all checks passed');

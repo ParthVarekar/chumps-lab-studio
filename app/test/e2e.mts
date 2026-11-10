@@ -106,7 +106,7 @@ await page.keyboard.press('ArrowRight');
 await page.keyboard.up('Shift');
 await sleep(500);
 const t1 = await text('.timecode');
-ok('Shift+→ moves the playhead one second', /^0:01\.0 /.test(t1), t1);
+ok('Shift+→ moves the playhead five frames (Premiere)', /^0:00\.[12] /.test(t1), t1);
 
 // 6. Preview handles: select the title while it is on screen and drag its handle
 const titleId = after.beats.flatMap((b: any) => b.layers).find((l: any) => l.props.text === 'Hello editor').id;
@@ -315,7 +315,66 @@ ok('M adds a marker at the playhead and it shows on the timeline', mkDoc.length 
 ok('Ctrl+→ jumps to the next marker', Math.abs(tNow - 30) < 0.1, `${tNow} s`);
 await page.keyboard.down('Shift'); await page.keyboard.press('m'); await page.keyboard.up('Shift');
 await sleep(800);
-ok('Shift+M removes the marker under the playhead', (await doc()).markers.length === 0);
+await page.evaluate(() => (window as any).__studio.getState().seekTo(10));
+await sleep(400);
+await page.keyboard.down('Shift'); await page.keyboard.press('m'); await page.keyboard.up('Shift');
+await sleep(500);
+ok('Shift+M goes to the next marker (Premiere)', Math.abs((await page.evaluate(() => (window as any).__studio.getState().time)) - 30) < 0.1);
+await page.keyboard.down('Control'); await page.keyboard.down('Alt'); await page.keyboard.press('m'); await page.keyboard.up('Alt'); await page.keyboard.up('Control');
+await sleep(800);
+ok('Ctrl+Alt+M deletes the marker under the playhead', (await doc()).markers.length === 0);
+
+// 9l. Premiere keys: edit points, J/K/L, help sheet, In/Out lift, Ctrl+K add edit, razor tool
+const sget = () => page.evaluate(() => { const s = (window as any).__studio.getState(); return { time: s.time, playing: s.playing, tool: s.tool, rate: s.rate, range: s.range }; });
+const press = async (k: string, mods: string[] = []) => { for (const m of mods) await page.keyboard.down(m as 'Shift'); await page.keyboard.press(k as 'a'); for (const m of mods.reverse()) await page.keyboard.up(m as 'Shift'); await sleep(350); };
+await page.evaluate(() => (window as any).__studio.getState().seekTo(2));
+await sleep(400);
+await press('ArrowDown');
+const afterDown = (await sget()).time;
+await press('ArrowUp');
+const afterUp = (await sget()).time;
+ok('Down / Up arrows jump to the next / previous edit point', afterDown > 2.05 && afterUp < afterDown, `${afterUp} <- ${afterDown}`);
+await press('l');
+await sleep(500);
+const playingL = (await sget()).playing;
+await press('k');
+ok('L plays forwards and K stops', playingL === true && (await sget()).playing === false);
+await press('j');
+const t0j = (await sget()).time;
+await sleep(700);
+const t1j = (await sget()).time;
+await press('k');
+ok('J plays backwards (the playhead moves back)', t1j < t0j - 0.2, `${t0j.toFixed(2)} -> ${t1j.toFixed(2)} s`);
+await press('?', ['Shift']);
+const helpOpen = !!(await page.$('.help'));
+await press('Escape');
+ok('? opens the shortcut sheet and Esc closes it', helpOpen && !(await page.$('.help')));
+// In / Out + Lift: three titles, lift the middle two
+const mk = async (at: number, until: number, text: string) => (await api('/api/ops', { dir: DIR, author: 'user', ops: [{ op: 'add_layer', component: 'KineticWord', at, until, props: { text } }] })).notes[0].id as string;
+const ia = await mk(120, 121, 'IN1'); const ib = await mk(124, 125, 'IN2'); const ic = await mk(130, 131, 'OUT');
+await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); (window as any).__studio.getState().select([]); (window as any).__studio.getState().seekTo(119.5); });
+await sleep(400);
+await press('i');
+await page.evaluate(() => (window as any).__studio.getState().seekTo(125.5));
+await sleep(400);
+await press('o');
+const rg = (await sget()).range;
+ok('I and O set the In and Out marks (shown as a band on the timeline)', Math.abs((rg.in ?? -1) - 119.5) < 0.1 && Math.abs((rg.out ?? -1) - 125.5) < 0.1 && (await page.$$('.clip-range')).length === 1);
+await press(';');
+const idsAfter = (await doc()).beats.flatMap((b: any) => b.layers).map((l: any) => l.id);
+ok('; (Lift) removes what lies between In and Out, nothing else', !idsAfter.includes(ia) && !idsAfter.includes(ib) && idsAfter.includes(ic));
+// Ctrl+K cuts the selected layer at the playhead
+const long = await mk(140, 146, 'CUTME');
+await page.evaluate((id) => { (window as any).__studio.getState().select([id]); (window as any).__studio.getState().seekTo(143); }, long);
+await sleep(400);
+const nBefore = count(await doc()).layers;
+await press('k', ['Control']);
+ok('Ctrl+K adds an edit: the layer is cut in two at the playhead', count(await doc()).layers === nBefore + 1);
+// Razor tool: C arms it, V leaves it
+await press('c');
+const razor = (await sget()).tool;
+await press('v');
+ok('C arms the razor tool and V returns to selection', razor === 'razor' && (await sget()).tool === 'select');
 
 // 9k. Lane mute: clicking a lane's name switches the whole lane off, and back on
 await page.evaluate(() => { const l = Array.from(document.querySelectorAll('.tl-label.mutable')).find((e) => (e as HTMLElement).innerText.startsWith('Overlay 1')) as HTMLElement; l.click(); });

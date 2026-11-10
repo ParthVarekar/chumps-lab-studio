@@ -737,6 +737,51 @@ export function rippleOps(edd: Edd, ids: string[]): Op[] {
 	];
 }
 
+/** Every item id in the edit (layers once each, cameras, moods, sounds). */
+export function allItemIds(edd: Edd): string[] {
+	const ids: string[] = [];
+	for (const s of edd.audio.sfx) ids.push(s.id);
+	for (const b of edd.beats) {
+		for (const l of b.layers) if (!isContinuation(l)) ids.push(l.id);
+		b.camera.forEach((_, i) => ids.push(camId(b, i)));
+		b.moods.forEach((_, i) => ids.push(moodId(b, i)));
+	}
+	return ids;
+}
+
+/**
+ * Premiere's Lift and Extract between In and Out. Items lying wholly inside the range (and unlocked, and whose whole group is
+ * inside too) are removed; Extract also slides every later, unlocked item left by the width of the range so no gap remains.
+ */
+export function rangeOps(edd: Edd, from: number, to: number, closeGap: boolean): Op[] {
+	if (!(to > from)) return [];
+	const eps = 0.02;
+	const inside = (id: string) => { const sp = spanOf(edd, id); return !!sp && sp.start >= from - eps && sp.end <= to + eps; };
+	const doomed = allItemIds(edd).filter((id) => {
+		const m = metaOfItem(edd, id);
+		if (!m || m.locked || !inside(id)) return false;
+		return withGroup(edd, id).every((g) => inside(g) && !metaOfItem(edd, g)?.locked);
+	});
+	const gone = new Set(doomed.flatMap((id) => withGroup(edd, id)));
+	const ops: Op[] = oneOfEach(edd, doomed).map((id) => ({ op: 'remove' as const, id }));
+	if (closeGap) {
+		const gap = to - from;
+		const seen = new Set<string>();
+		const later: { id: string; start: number }[] = [];
+		for (const id of allItemIds(edd)) {
+			if (gone.has(id)) continue;
+			const sp = spanOf(edd, id);
+			const m = metaOfItem(edd, id);
+			if (!sp || !m || m.locked || sp.start < to - eps) continue;
+			if (m.group) { if (seen.has(m.group)) continue; seen.add(m.group); }
+			later.push({ id, start: sp.start });
+		}
+		later.sort((a, z) => a.start - z.start);
+		for (const x of later) ops.push({ op: 'set_time', id: x.id, start: Math.max(0, x.start - gap) });
+	}
+	return ops;
+}
+
 /** Global [start, end] of an item, for the UI. */
 export function spanOf(edd: Edd, id: string): { start: number; end: number } | null {
 	const f = find(edd, id);

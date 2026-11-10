@@ -73,16 +73,20 @@
   </tr>
 </table>
 
-## Shortcuts
+## Shortcuts (Premiere Pro keys)
+
+Press **?** in the editor for the full sheet. The ones you will use most:
 
 | Key | Does | Key | Does |
 |---|---|---|---|
-| Space · ← → | play · frame step (Shift: 1 s) | Ctrl+G / Ctrl+Shift+G | group / ungroup |
-| S · [ · ] | split · set start · set end at the playhead | E | disable / enable |
-| Ctrl+C / Ctrl+V | copy · paste at the playhead | M · Shift+M | add · remove marker |
-| Ctrl+D · Ctrl+A | duplicate · select all | Ctrl+← / → | previous / next marker |
-| Del · Shift+Del | delete · ripple delete | Alt+← / → | nudge (Shift: 1 s) |
-| L | lock | / | ask the assistant |
+| Space · J K L | play · shuttle back / stop / forward (tap again for 2×, 4×) | Ctrl+K | add edit (cut at the playhead) |
+| ← → · Shift+← → | one frame · five frames | C · V | razor tool · selection tool |
+| ↑ ↓ | previous / next edit point | Q · W | trim start / end to the playhead |
+| I · O · X | mark In · Out · mark the selected item | ; · ' | lift · extract between In and Out |
+| M · Shift+M · Ctrl+Shift+M | add marker · next · previous | Delete · Shift+Delete | remove · ripple delete |
+| Ctrl+C / X / V | copy / cut / paste at the playhead | Ctrl+G · Ctrl+Shift+G | group · ungroup |
+| A | select everything from the playhead | E · Ctrl+L | disable · lock |
+| S · = · - · \ | snapping · zoom in · out · fit | Alt+← → | nudge a frame |
 
 ## How it works
 
