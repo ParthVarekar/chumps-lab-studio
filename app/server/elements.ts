@@ -106,7 +106,7 @@ SPEC = {name, description, viewBox:[w,h], params:[...], nodes:[...]}
 - repeat: {count} draws the node count times (ticks, bars, arcs, leaves) using i and n.  show: expression, drawn only when non-zero.
 
 DETAIL: a recognisable object is built from 5-12 parts, not one or two. A rocket = body, nose cone, round window, two fins, a flame (the flame is what moves).
-A plant = pot, stem, 3+ leaves that sway. A gauge = arc, ticks, needle, hub, number. If the first idea is a single triangle or circle, add the parts that make it that thing.
+A plant = pot, stem, 3+ leaves that sway. An explainer = the boxes/icons for each part, arrows that draw between them (appear kind draw), a label per part, and a dot or packet that travels the path. A gauge = arc, ticks, needle, hub, number. If the first idea is a single triangle or circle, add the parts that make it that thing.
 FORMULAS: write every computed number as "=expression" (a leading "="), also in anim from/to/period/duration. There is NO ?: operator: use if(cond, a, b).
 A repeat count draws ONE node several times (bars 0..n-1): never copy-paste the same node and repeat each copy.
 
@@ -120,7 +120,15 @@ Use "group" only to move several shapes together; give every group an origin if 
 
 STYLE (so it looks like it belongs in this video): flat, bold shapes; important shapes get a dark outline (stroke "ink", strokeWidth 3-6) with rounded caps and joins;
 numbers use fontFamily "display" and are large (fontSize >= 14 in a 200-high box); at most three colours, mostly "accent" (yellow) plus white and a red "accent2" for alerts.
-MOTION: it appears with an entrance in the first half second (draw, spring scale, or a ramp), then a subtle idle loop. Nothing is static. Use ease out / spring, not linear, for moves.
+MOTION: it appears with an entrance in the first half second, then a subtle idle loop. Nothing is static. Prefer ease "expo" / "quart" (fast, then settles) for arrivals and "in-expo" for exits; avoid bounce/elastic/spring.
+STAGED REVEALS (for explainers, "how it works", steps): give a node 'appear: {at: seconds, kind, duration?, until?}' and it is not drawn until 'at', then eases in. kind: fade | rise | pop | draw (strokes) | grow (bars from their baseline) | drop | slide-left | slide-right.
+Stagger parts 0.15-0.4 s apart in the order the idea unfolds (the thing, then its arrow, then the next thing). Formulas also have ease(x) and smooth(x) giving 0..1: ease((t-1)/0.5).
+3D: a node {type:"scene3d", attrs:{x,y,width,height} (its area in the viewBox; default all of it), camera:{yaw,pitch,zoom?}, objects:[...]} draws solids.
+  x is right, y is UP, z toward the viewer; an object's 'at:[x,y,z]' is the centre of its BASE, so stack with y = i*height and put things on the floor at y 0.
+  object shapes: box | cylinder | cone | pyramid | sphere | plane (a floor, size [w,0,d]) | line (needs 'to:[x,y,z]', 'arrow:true' for a head) | label (needs 'text', fontSize).
+  object fields: size [w,h,d] (or one number), at, rotate [rx,ry,rz] degrees, color (theme word, #hex or $param), opacity, appear, repeat {count}, show. Numbers may be "=formulas" in t, i, n and your params.
+  camera yaw like "=30+t*20" orbits slowly (use pitch 20-30). zoom is a multiplier (default 1 = auto-fitted: you never need to scale to fit). Use 3-8 objects, labels for names, a plane floor for grounding.
+  Use a scene3d when the brief says 3D / cube / model / stack / layers / solid / orbit / depth; otherwise stay 2D. Put the dark backing plate (rect or circle, fill black) behind it as for any element.
 BLENDING: you are told how light or dark the footage is under the region. On dark footage light shapes read well. On light or busy footage put a soft black backing plate
 (circle or rect, fill "black", opacity 0.5) behind text and thin lines. Keep the design simple enough to read at a glance when small.
 DATA: if the request or the narration gives a number for this element (78%, 4 bars), put it in the matching param's default.
