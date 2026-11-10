@@ -16,7 +16,7 @@ from typing import Literal
 from PIL import Image
 from pydantic import BaseModel
 
-from cls_sidecar.gateway import SUPER_VL_FREE, OpenRouterGateway, image_part
+from cls_sidecar.gateway import PLANNER_FREE, SUPER_VL_FREE, OpenRouterGateway, image_part
 
 SAFE = 5.0
 FULL_FRAME = {"MemeCut"}
@@ -205,10 +205,15 @@ def vl_review(gw: OpenRouterGateway, edd: dict, render: Path, out_dir: Path) -> 
         )
         msgs = [{"role": "user", "content": [{"type": "text", "text": prompt}, image_part(sheet, max_side=2000)]}]
         kw = dict(name="sheet_review", schema=strict_schema(SheetReview), max_tokens=6000, temperature=0.6)
-        try:  # describing visible layout needs no long reasoning (run 2 spent ~4,300 reasoning tokens per sheet)
-            data, raw = gw.json_schema_chat(SUPER_VL_FREE, msgs, reasoning={"enabled": False}, **kw)
-        except Exception:  # noqa: BLE001 - endpoint may not accept disabling reasoning
-            data, raw = gw.json_schema_chat(SUPER_VL_FREE, msgs, reasoning={"effort": "low"}, **kw)
+        # Inkling 2 Small (multimodal) reads the sheet first; if it refuses the request (the gateway then sends it to Super VL) or does not
+        # answer in JSON, Super VL answers. Describing visible layout needs no long reasoning (run 2 spent ~4,300 reasoning tokens per sheet).
+        try:
+            data, raw = gw.json_schema_chat(PLANNER_FREE, msgs, reasoning={"effort": "low"}, fallback_model=SUPER_VL_FREE, **kw)
+        except Exception:  # noqa: BLE001 - prose instead of JSON, an error, or a budget spent on reasoning
+            try:
+                data, raw = gw.json_schema_chat(SUPER_VL_FREE, msgs, reasoning={"enabled": False}, **kw)
+            except Exception:  # noqa: BLE001 - endpoint may not accept disabling reasoning
+                data, raw = gw.json_schema_chat(SUPER_VL_FREE, msgs, reasoning={"effort": "low"}, **kw)
         review = SheetReview.model_validate(data)
         for iss in review.issues:
             k = iss.tile - 1

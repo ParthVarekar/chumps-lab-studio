@@ -75,7 +75,7 @@ export const Assistant: React.FC = () => {
 							) : null}
 							{m.state === 'applied' ? <span className="state ok">Applied. Ctrl+Z undoes it.</span> : null}
 							{m.state === 'discarded' ? <span className="state">Discarded</span> : null}
-							{m.source ? <small className="src">{m.source === 'grammar' ? 'instant shortcut' : m.source === 'model' ? 'AI model' : ''}</small> : null}
+							{m.source ? <small className="src">{m.source === 'grammar' ? 'instant shortcut' : m.source === 'model' ? (m.via ? `AI: ${m.via.replace(/^[^/]+\//, '').replace(/:free$/, '')}` : 'AI model') : ''}</small> : null}
 						</div>
 					</div>
 				))}

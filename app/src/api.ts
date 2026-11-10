@@ -14,6 +14,7 @@ export interface AssistantReply {
 	ops: Op[];
 	options?: string[];
 	source: 'grammar' | 'model' | 'none';
+	via?: string; // which model answered, e.g. thinkingmachines/inkling-2-small:free
 	ms?: number;
 }
 export interface ElementEntry { id: string; name: string; description: string; tags: string[]; spec: any; params: Record<string, unknown>; saved?: boolean }

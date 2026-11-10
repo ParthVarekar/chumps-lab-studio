@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { frameDataUrl } from '../server/media';
 
 const BASE = 'http://localhost:4173';
 const H = { 'X-Studio': '1' };
@@ -62,6 +63,10 @@ try {
 	assert.equal(e.beats[0].base.src, item.path);
 	assert.ok(Math.abs(e.beats[0].end - item.duration) < 0.01);
 	assert.equal(e.audio.voice?.src, item.path, 'the first clip with sound becomes the main audio');
+	// the assistant can look at the footage under the playhead
+	const frame = frameDataUrl(dir, e, 1.5);
+	assert.ok(frame && frame.startsWith('data:image/jpeg;base64,') && frame.length > 2000, 'a frame of the clip comes back as a JPEG data URL');
+	assert.equal(frameDataUrl(dir, { ...e, beats: [{ ...e.beats[0], base: { kind: 'color', color: '#000' } }] }, 1), null, 'a colour-only beat has no picture to show');
 	// a second, long clip is cut into ~20 s beats and its audio arrives as a sound item
 	const long = await j('/api/ops', { dir, author: 'user', ops: [{ op: 'add_footage', src: item.path, duration: 50, kind: 'video', has_audio: true }, { op: 'add_footage', src: item.path, duration: 4, kind: 'image' }] });
 	assert.ok(long.body.notes.every((n: any) => n.ok), JSON.stringify(long.body.notes));

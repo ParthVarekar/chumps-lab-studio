@@ -145,6 +145,20 @@ export function receiveUpload(dir: string, rawName: string, req: IncomingMessage
 	});
 }
 
+/**
+ * The footage frame at global time `t` as a data URL (JPEG, ~960 px wide), for a multimodal model to look at. It is the raw footage under the
+ * graphics, which is what the assistant needs to read the screen. Returns null when the moment has no video / image underneath it.
+ */
+export function frameDataUrl(dir: string, edd: Edd, t: number): string | null {
+	const beat = edd.beats.find((b) => t >= b.start && t < b.end) ?? edd.beats[edd.beats.length - 1];
+	if (!beat || beat.base.kind === 'color') return null;
+	const file = path.join(dir, beat.base.src);
+	if (!path.resolve(file).startsWith(path.resolve(dir) + path.sep) || !existsSync(file)) return null;
+	const seek = beat.base.kind === 'video' ? Math.max(0, beat.base.from + (t - beat.start)) : 0;
+	const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', ...(seek ? ['-ss', seek.toFixed(2)] : []), '-i', file, '-frames:v', '1', '-vf', 'scale=960:-2', '-q:v', '5', '-f', 'image2pipe', '-c:v', 'mjpeg', '-'], { maxBuffer: 4e6, timeout: 15000 });
+	return r.status === 0 && r.stdout.length > 200 ? `data:image/jpeg;base64,${r.stdout.toString('base64')}` : null;
+}
+
 // ------------------------------------------------------------------ new projects
 export const SEQUENCE_LIMITS = { width: [16, 7680], height: [16, 4320], fps: [1, 120] } as const;
 export interface NewProjectArgs { name: string; width?: number; height?: number; fps?: number; seconds?: number }

@@ -10,7 +10,7 @@ const post = async (p: string, b: unknown) => (await fetch(`http://localhost:417
 await post('/api/open', { dir });
 const t0 = Date.now();
 const r = await post('/api/assistant', { dir, message, time: Number(opt('--time', '0')), selection: opt('--select', '').split(',').filter(Boolean) });
-console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s ${r.source}] ${r.reply}`);
+console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s ${r.source}${r.via ? ' via ' + r.via : ''}] ${r.reply}`);
 if (r.options?.length) console.log('options:', r.options);
 for (const o of r.ops ?? []) console.log('  op', JSON.stringify(o).slice(0, 260));
 if (r.ops?.length) {

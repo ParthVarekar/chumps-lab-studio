@@ -22,10 +22,15 @@ import httpx
 from cls_sidecar.paths import STUDIO_ROOT
 
 BASE_URL = "https://openrouter.ai/api/v1"
-# The planner model (forced tool calls + a reasoning budget). Inkling 2 Small (thinkingmachines/inkling-2-small:free) was tried in its place on
-# 10 Nov 2026 but its free endpoint often answers HTTP 403 "only available on agentic harnesses" to API clients, so planning stays on Nemotron 3 Ultra.
-PLANNER_FREE = "nvidia/nemotron-3-ultra-550b-a55b:free"
+# The planner model (forced tool calls + a reasoning budget): Inkling 2 Small, as asked. Its FREE endpoint often answers HTTP 403 "only available on
+# agentic harnesses" to ordinary API clients; _post then retries the same request on the backup (Nemotron 3 Ultra) and tries Inkling again after
+# RESTRICTED_FOR_S seconds, so it is used whenever OpenRouter lets it through.
+PLANNER_FREE = "thinkingmachines/inkling-2-small:free"
+PLANNER_BACKUP = "nvidia/nemotron-3-ultra-550b-a55b:free"
 ULTRA_FREE = PLANNER_FREE  # old name, kept so older scripts still import
+FALLBACKS = {PLANNER_FREE: PLANNER_BACKUP}
+RESTRICTED_FOR_S = 60  # a refusal costs ~0.1 s, so Inkling gets another chance every minute
+_restricted_until: dict[str, float] = {}
 SUPER_VL_FREE = "nvidia/nemotron-3.5-super-vl:free"
 LOG_PATH = STUDIO_ROOT / "logs" / "llm-requests.jsonl"
 
@@ -88,6 +93,13 @@ class OpenRouterGateway:
             fh.write(json.dumps(entry) + "\n")
 
     def _post(self, path: str, body: dict) -> dict:
+        body = dict(body)
+        wanted = body.get("model")
+        # Which model to use when `wanted` is refused: the caller can name one (a picture job needs a vision model),
+        # otherwise the default for that model (the planner's text backup).
+        backup = body.pop("fallback_model", None) or FALLBACKS.get(wanted)
+        if backup and wanted == PLANNER_FREE and _restricted_until.get(wanted, 0) > time.time():
+            body["model"] = backup  # refused recently: don't knock again yet
         for attempt in range(self.max_retries + 1):
             t0 = time.perf_counter()
             resp = self._client.post(path, json=body)
@@ -113,6 +125,10 @@ class OpenRouterGateway:
             if code in RETRY_STATUS and attempt < self.max_retries:
                 wait = float(resp.headers.get("Retry-After") or 0) or (2**attempt * 5 + random.uniform(0, 3))
                 time.sleep(min(wait, 120))
+                continue
+            if resp.status_code == 403 and backup and body.get("model") == PLANNER_FREE and "agentic harness" in str(_short(data)).lower():
+                _restricted_until[body["model"]] = time.time() + RESTRICTED_FOR_S
+                body["model"] = backup
                 continue
             raise GatewayError(f"{path} failed with HTTP {resp.status_code}: {_short(data)}")
         raise GatewayError("unreachable")

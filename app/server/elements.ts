@@ -19,7 +19,7 @@ import { Generated } from '@cls/engine/src/element/Element';
 import { PRESETS } from '@cls/engine/src/element/presets';
 import { ElementSpec, checkSpec, defaultParams, type SpecIssue } from '@cls/engine/src/element/spec';
 import { loadContext, norm, ocrAt } from './context';
-import { BIG_MODEL, FAST_MODEL, chatJson, lastProvider } from './llm';
+import { BACKUP_BIG, BIG_MODEL, FAST_MODEL, chatJson, lastProvider } from './llm';
 import { LIB } from './library';
 
 export interface Region { x: number; y: number; w: number; h: number }
@@ -235,7 +235,7 @@ export async function designElement(a: DesignArgs): Promise<DesignResult> {
 		let content: string;
 		try {
 			// The first try uses the fast model; if it keeps failing the checks, the big model gets one go.
-			content = await chatJson(messages, { schemaName: 'element', schema: {}, mode: 'json', model: attempt === 3 ? BIG_MODEL : FAST_MODEL, maxTokens: 6000, temperature: 0.35, reasoning: attempt === 3 ? { effort: 'low' } : { enabled: false }, timeoutMs: attempt === 3 ? 240000 : 90000 });
+			content = await chatJson(messages, { schemaName: 'element', schema: {}, mode: 'json', model: attempt === 3 ? BIG_MODEL : FAST_MODEL, backup: attempt === 3 ? BACKUP_BIG : undefined, maxTokens: 6000, temperature: 0.35, reasoning: attempt === 3 ? { effort: 'low' } : { enabled: false }, timeoutMs: attempt === 3 ? 240000 : 90000 });
 		} catch (e) {
 			return { ok: false, say: `The AI model didn't answer (${e instanceof Error ? e.message.slice(0, 160) : 'error'}). Try again in a moment, or start from a preset in the gallery.`, issues, ms: Date.now() - t0, attempts: attempt };
 		}

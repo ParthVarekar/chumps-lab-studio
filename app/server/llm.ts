@@ -4,13 +4,25 @@ import { existsSync, mkdirSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { LIB, ROOT } from './library';
 
-export const FAST_MODEL = 'nvidia/nemotron-3.5-super-vl:free';
-// The "thinking" model for hard jobs (the element designer's last try): Inkling 2 Small, as asked. Its FREE endpoint sometimes refuses ordinary API
-// clients (HTTP 403 "only available on agentic harnesses"; seen 2 of 3 times on 10 Nov 2026), so a 403 is remembered and Nemotron 3 Ultra answers instead.
-// Override with CLS_BIG_MODEL. If OpenRouter opens the endpoint up, nothing needs changing.
-export const BIG_MODEL = process.env.CLS_BIG_MODEL || 'thinkingmachines/inkling-2-small:free';
-const BIG_BACKUP = 'nvidia/nemotron-3-ultra-550b-a55b:free';
-const restricted = new Set<string>();
+// Inkling 2 Small (free, 1M context, a reasoning model) is the primary model for everything: the assistant, the element designer, every attempt.
+// Its FREE endpoint sometimes refuses ordinary API clients (HTTP 403 "only available on agentic harnesses"), and it has no response_format, so it may
+// answer in prose or a code fence. Both are handled below: a refusal or an answer that is not valid JSON is retried on a backup model that does support
+// response_format (Nemotron 3.5 Super VL; Nemotron 3 Ultra for the designer's last, hardest attempt), then the local models take over.
+// Override with CLS_MODEL / CLS_FAST_MODEL / CLS_BIG_MODEL.
+/** A chat message. `content` may mix text and pictures (OpenAI-style parts); the cloud models are multimodal, the local text models get the words only. */
+export type ContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
+export type ChatMessage = { role: string; content: string | ContentPart[] };
+const wordsOnly = (messages: ChatMessage[]) => messages.map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : m.content.filter((p): p is Extract<ContentPart, { type: 'text' }> => p.type === 'text').map((p) => p.text).join('\n') }));
+
+export const PRIMARY_MODEL = process.env.CLS_MODEL || 'thinkingmachines/inkling-2-small:free';
+export const FAST_MODEL = process.env.CLS_FAST_MODEL || PRIMARY_MODEL;
+export const BIG_MODEL = process.env.CLS_BIG_MODEL || PRIMARY_MODEL;
+export const BACKUP_MODEL = 'nvidia/nemotron-3.5-super-vl:free';
+export const BACKUP_BIG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+/** Models OpenRouter refused (403), and until when we leave them alone. They are tried again after RESTRICTED_FOR_MS. */
+const RESTRICTED_FOR_MS = 60_000; // a refusal costs ~0.1 s, so Inkling gets another chance every minute
+const restricted = new Map<string, number>();
+const isRestricted = (m: string) => (restricted.get(m) ?? 0) > Date.now();
 
 export function apiKey(): string | null {
 	if (process.env.CLS_OPENROUTER_API_KEY) return process.env.CLS_OPENROUTER_API_KEY;
@@ -30,6 +42,8 @@ export interface ChatOptions {
 	temperature?: number;
 	reasoning?: { enabled?: boolean; effort?: 'low' | 'medium' | 'high'; max_tokens?: number };
 	timeoutMs?: number;
+	/** Model to retry on if the first refuses (403) or answers something that is not JSON. Default: Nemotron 3.5 Super VL. */
+	backup?: string;
 }
 
 export const LOCAL_MODEL = process.env.CLS_LOCAL_MODEL || 'qwen3:8b';
@@ -51,7 +65,7 @@ async function ensureOllama(): Promise<boolean> {
 }
 
 /** The local model (Ollama): free, offline, no daily limit. Used when the free cloud endpoint is out of quota or down. */
-async function ollamaJson(messages: { role: string; content: string }[], o: ChatOptions): Promise<string> {
+async function ollamaJson(messages: ChatMessage[], o: ChatOptions): Promise<string> {
 	await ensureOllama();
 	const ctl = new AbortController();
 	const timer = setTimeout(() => ctl.abort(), 300000);
@@ -60,7 +74,7 @@ async function ollamaJson(messages: { role: string; content: string }[], o: Chat
 			method: 'POST',
 			signal: ctl.signal,
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ model: LOCAL_MODEL, messages, stream: false, think: false, format: o.mode === 'json' ? 'json' : o.schema, options: { temperature: o.temperature ?? 0.3, num_ctx: 12288, num_predict: o.maxTokens ?? 4000 } }),
+			body: JSON.stringify({ model: LOCAL_MODEL, messages: wordsOnly(messages), stream: false, think: false, format: o.mode === 'json' ? 'json' : o.schema, options: { temperature: o.temperature ?? 0.3, num_ctx: 12288, num_predict: o.maxTokens ?? 4000 } }),
 		});
 		const body = (await r.json()) as { message?: { content?: string }; error?: string };
 		if (!r.ok || body.error) throw new Error(body.error ?? `ollama returned ${r.status}`);
@@ -119,7 +133,7 @@ async function ensureLlama(): Promise<boolean> {
 	return llamaStarting;
 }
 
-async function llamaJson(messages: { role: string; content: string }[], o: ChatOptions): Promise<string> {
+async function llamaJson(messages: ChatMessage[], o: ChatOptions): Promise<string> {
 	if (!(await ensureLlama())) throw new Error('the local Bonsai server is not running and could not be started (see D:\\ChumpsLabStudio\\logs\\llama-server.log)');
 	const call = async (format: unknown) => {
 		const ctl = new AbortController();
@@ -129,7 +143,7 @@ async function llamaJson(messages: { role: string; content: string }[], o: ChatO
 				method: 'POST',
 				signal: ctl.signal,
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ model: LLAMA_NAME, messages, stream: false, temperature: o.temperature ?? 0.3, max_tokens: o.maxTokens ?? 4000, response_format: format }),
+				body: JSON.stringify({ model: LLAMA_NAME, messages: wordsOnly(messages), stream: false, temperature: o.temperature ?? 0.3, max_tokens: o.maxTokens ?? 4000, response_format: format }),
 			});
 			const body = (await r.json()) as { choices?: { message?: { content?: string } }[]; error?: { message?: string } };
 			return { ok: r.ok && !body.error, text: body.choices?.[0]?.message?.content, error: body.error?.message ?? `llama-server returned ${r.status}` };
@@ -150,10 +164,10 @@ async function llamaJson(messages: { role: string; content: string }[], o: ChatO
 }
 
 /** A schema-constrained chat call. Cloud first; if that fails (quota, outage, timeout) Bonsai answers locally, then Ollama as the last resort. */
-export async function chatJson(messages: { role: string; content: string }[], o: ChatOptions & { fallback?: boolean }): Promise<string> {
+export async function chatJson(messages: ChatMessage[], o: ChatOptions & { fallback?: boolean }): Promise<string> {
 	try {
-		const text = await cloudJson(messages, o);
-		lastUsed = o.model ?? FAST_MODEL;
+		const { text, model } = await cloudJson(messages, o);
+		lastUsed = model;
 		return text;
 	} catch (cloudError) {
 		if (o.fallback === false) throw cloudError;
@@ -178,40 +192,63 @@ export async function chatJson(messages: { role: string; content: string }[], o:
 /** Some models (no response_format support) answer ```json { ... } ```: hand back just the JSON. */
 export const unfence = (s: string): string => { const m = /^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/i.exec(s); return m ? m[1] : s; };
 
-async function cloudJson(messages: { role: string; content: string }[], o: ChatOptions): Promise<string> {
-	if (o.model && restricted.has(o.model)) o = { ...o, model: BIG_BACKUP };
+async function cloudJson(messages: ChatMessage[], o: ChatOptions): Promise<{ text: string; model: string }> {
 	const key = apiKey();
 	if (!key) throw new Error('no API key (CLS_OPENROUTER_API_KEY in .env)');
-	const ctl = new AbortController();
-	const timer = setTimeout(() => ctl.abort(), o.timeoutMs ?? 90000);
-	try {
-		const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-			method: 'POST',
-			signal: ctl.signal,
-			headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-Title': 'Chumps Lab Studio' },
-			body: JSON.stringify({
-				model: o.model ?? FAST_MODEL,
-				messages,
-				temperature: o.temperature ?? 0.3,
-				max_tokens: o.maxTokens ?? 4000,
-				reasoning: o.reasoning ?? { enabled: false },
-				response_format: o.mode === 'json' ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: o.schemaName, strict: true, schema: o.schema } },
-			}),
-		});
-		const body = (await r.json()) as { choices?: { message?: { content?: string }; finish_reason?: string }[]; error?: { message?: string } };
-		if (r.status === 403 && /agentic harness/i.test(body.error?.message ?? '') && o.model && o.model !== BIG_BACKUP) {
-			restricted.add(o.model); // closed to this kind of client: don't ask again this session
+	const wanted = o.model ?? FAST_MODEL;
+	const backup = o.backup ?? BACKUP_MODEL;
+	const post = async (model: string) => {
+		const ctl = new AbortController();
+		const timer = setTimeout(() => ctl.abort(), o.timeoutMs ?? 90000);
+		try {
+			const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				signal: ctl.signal,
+				headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-Title': 'Chumps Lab Studio', 'HTTP-Referer': 'https://github.com/ParthVarekar/chumps-lab-studio' }, // OpenRouter's own app-attribution headers, with our real name and repo
+				body: JSON.stringify({
+					model,
+					messages,
+					temperature: o.temperature ?? 0.3,
+					max_tokens: o.maxTokens ?? 4000,
+					reasoning: o.reasoning ?? { enabled: false },
+					response_format: o.mode === 'json' ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: o.schemaName, strict: true, schema: o.schema } },
+				}),
+			});
+			const body = (await r.json()) as { choices?: { message?: { content?: string }; finish_reason?: string }[]; error?: { message?: string } };
+			return { r, body };
+		} catch (e) {
+			if (e instanceof Error && e.name === 'AbortError') throw new Error('the model took too long');
+			throw e;
+		} finally {
 			clearTimeout(timer);
-			return cloudJson(messages, { ...o, model: BIG_BACKUP });
 		}
-		if (!r.ok || body.error) throw new Error(body.error?.message ?? `model returned ${r.status}`);
-		const content = body.choices?.[0]?.message?.content;
-		if (!content) throw new Error(`empty answer (${body.choices?.[0]?.finish_reason ?? 'unknown'})`);
+	};
+	const answer = (res: Awaited<ReturnType<typeof post>>): string => {
+		if (!res.r.ok || res.body.error) throw new Error(res.body.error?.message ?? `model returned ${res.r.status}`);
+		const content = res.body.choices?.[0]?.message?.content;
+		if (!content) throw new Error(`empty answer (${res.body.choices?.[0]?.finish_reason ?? 'unknown'})`);
 		return unfence(content);
-	} catch (e) {
-		if (e instanceof Error && e.name === 'AbortError') throw new Error('the model took too long');
-		throw e;
-	} finally {
-		clearTimeout(timer);
+	};
+	const isJson = (t: string) => { try { JSON.parse(t); return true; } catch { return false; } };
+
+	let model = isRestricted(wanted) ? backup : wanted;
+	let res = await post(model);
+	if (res.r.status === 403 && /agentic harness/i.test(res.body.error?.message ?? '') && model !== backup) {
+		restricted.set(model, Date.now() + RESTRICTED_FOR_MS); // refused as a client: leave it alone for a while and use the backup
+		model = backup;
+		res = await post(model);
 	}
+	let text: string;
+	try { text = answer(res); } catch (e) {
+		// An empty answer / error from the primary (e.g. it spent its whole budget reasoning): try the backup once.
+		if (model === backup) throw e;
+		model = backup;
+		text = answer(await post(model));
+	}
+	if (!isJson(text) && model !== backup) {
+		// No response_format on this model: it answered in prose. Ask the backup, which can be held to JSON.
+		const again = await post(backup);
+		try { const t2 = answer(again); if (isJson(t2)) return { text: t2, model: backup }; } catch { /* keep the first answer */ }
+	}
+	return { text, model };
 }

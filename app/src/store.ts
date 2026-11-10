@@ -24,6 +24,7 @@ export interface Msg {
 	options?: string[];
 	state?: 'pending' | 'applied' | 'discarded';
 	source?: string;
+	via?: string;
 }
 
 interface State {
@@ -313,7 +314,7 @@ export const useStudio = create<State>((set, get) => ({
 			set((s) => ({ msgs: [...s.msgs, { id: nextMsg++, who: 'ai', text: `Something went wrong: ${e instanceof Error ? e.message : e}` }] }));
 			return;
 		}
-		const msg: Msg = { id: nextMsg++, who: 'ai', text: rep.reply, ops: rep.ops, options: rep.options, state: rep.ops.length ? 'pending' : undefined, source: rep.source };
+		const msg: Msg = { id: nextMsg++, who: 'ai', text: rep.reply, ops: rep.ops, options: rep.options, state: rep.ops.length ? 'pending' : undefined, source: rep.source, via: rep.via };
 		set((s) => ({ msgs: [...s.msgs, msg] }));
 		if (rep.ops.length) {
 			const r = await api.ops(dir, rep.ops, { dryRun: true });

@@ -15,13 +15,14 @@ import type { Edd } from '@cls/engine/src/edd/schema';
 import { find, segments, spanOf, camId, type Op } from '../shared/ops';
 import { clauseEnd, loadContext, movingAt, nextMotion, norm, ocrAt, wordNear, type Ctx, type OcrEl } from './context';
 import { designElement } from './elements';
-import { chatJson } from './llm';
+import { chatJson, lastProvider, type ChatMessage } from './llm';
+import { frameDataUrl } from './media';
 import { ROOT, iconOp, matchIcon, memeCatalog, pickSfx, sfxOp, sfxRoles, soundOp, stickerOp } from './library';
 
 const LEAD = 0.5; // graphics land this much before their word (measured on the creator's own edits)
 
 export interface AssistantArgs { dir: string; edd: Edd; message: string; time: number; selection: string[]; region?: { x: number; y: number; w: number; h: number } }
-export interface AssistantReply { reply: string; ops: Op[]; options?: string[]; source: 'grammar' | 'model' | 'none'; ms?: number }
+export interface AssistantReply { reply: string; ops: Op[]; options?: string[]; source: 'grammar' | 'model' | 'none'; via?: string; ms?: number }
 
 // ------------------------------------------------------------------ small helpers
 function parseTime(s: string, now: number): number | null {
@@ -264,7 +265,13 @@ async function askModel(a: AssistantArgs, ctx: Ctx): Promise<AssistantReply> {
 	const roles = sfxRoles();
 	const Out = z.object({ say: z.string(), ops: z.array(OpSchemas(stickers, roles)) });
 	const schema = z.toJSONSchema(Out, { target: 'draft-7' });
-	const messages: { role: string; content: string }[] = [{ role: 'system', content: SYSTEM + `\nSTICKERS: ${stickers.join(', ')}\nSOUND ROLES: ${roles.join(', ')}` }, { role: 'user', content: `${pack(a, ctx)}\n\nREQUEST: ${a.message}` }];
+	// The model is multimodal: show it the footage at the playhead so "the button in the corner" or "this window" can be understood by looking.
+	const frame = frameDataUrl(a.dir, a.edd, a.time);
+	const ask = `${pack(a, ctx)}\n\nREQUEST: ${a.message}`;
+	const messages: ChatMessage[] = [
+		{ role: 'system', content: SYSTEM + `\nSTICKERS: ${stickers.join(', ')}\nSOUND ROLES: ${roles.join(', ')}` },
+		{ role: 'user', content: frame ? [{ type: 'text', text: `${ask}\n\n(The picture is the video at the playhead, ${a.time.toFixed(1)} s, as raw footage without the graphics that are on it.)` }, { type: 'image_url', image_url: { url: frame } }] : ask },
+	];
 	const t0 = Date.now();
 	for (let attempt = 0; attempt < 2; attempt++) {
 		let content = '';
@@ -281,7 +288,7 @@ async function askModel(a: AssistantArgs, ctx: Ctx): Promise<AssistantReply> {
 			continue;
 		}
 		const asks = parsed.ops.filter((o) => o.op === 'ask') as { op: 'ask'; question: string; options: string[] }[];
-		if (asks.length) return { reply: asks[0].question, ops: [], options: asks[0].options, source: 'model', ms: Date.now() - t0 };
+		if (asks.length) return { reply: asks[0].question, ops: [], options: asks[0].options, source: 'model', via: lastProvider(), ms: Date.now() - t0 };
 		const ops: Op[] = [];
 		const errors: string[] = [];
 		for (const mo of parsed.ops) {
@@ -297,9 +304,9 @@ async function askModel(a: AssistantArgs, ctx: Ctx): Promise<AssistantReply> {
 			continue;
 		}
 		const reply = errors.length ? `${parsed.say}\n\nCouldn't do part of it: ${errors.join('; ')}` : parsed.say;
-		return { reply, ops, source: 'model', ms: Date.now() - t0 };
+		return { reply, ops, source: 'model', via: lastProvider(), ms: Date.now() - t0 };
 	}
-	return { reply: 'I couldn’t turn that into an edit. Try a typed shortcut, e.g. zoom 1:04 "Test Condition".', ops: [], source: 'model', ms: Date.now() - t0 };
+	return { reply: 'I couldn’t turn that into an edit. Try a typed shortcut, e.g. zoom 1:04 "Test Condition".', ops: [], source: 'model', via: lastProvider(), ms: Date.now() - t0 };
 }
 
 type ModelOp = Record<string, any> & { op: string; why: string };
