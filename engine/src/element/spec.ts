@@ -4,8 +4,10 @@
  */
 import { z } from 'zod';
 import { evalExpr, exprNames } from './expr';
+import { APPEAR_KINDS, EASES } from './motion';
 
-export const NODE_TYPES = ['rect', 'circle', 'ellipse', 'line', 'path', 'polyline', 'polygon', 'text', 'group'] as const;
+export const NODE_TYPES = ['rect', 'circle', 'ellipse', 'line', 'path', 'polyline', 'polygon', 'text', 'group', 'scene3d'] as const;
+export const SHAPES_3D = ['box', 'cylinder', 'cone', 'pyramid', 'sphere', 'plane', 'line', 'label'] as const;
 export const ANIM_PROPS = ['rotate', 'translateX', 'translateY', 'scale', 'scaleX', 'scaleY', 'opacity', 'draw'] as const;
 /** Presentation attributes an element may set. Anything else is rejected. */
 export const ATTRS = [
@@ -40,9 +42,38 @@ export const AnimSpec = z.object({
 	delay: Val.optional(),
 	phase: Val.optional().describe('cycles offset, e.g. 0.25 starts a quarter into the cycle'),
 	rate: Val.optional().describe('changes per second (flicker)'),
-	ease: z.enum(['linear', 'in', 'out', 'inout', 'spring', 'back']).optional(),
+	ease: z.enum(EASES).optional(),
 });
 export type AnimSpec = z.infer<typeof AnimSpec>;
+
+/** A staged entrance (and optional exit): the vocabulary of explainers. "at" is seconds since the element appeared. */
+export const AppearSpec = z.object({
+	at: Val.default(0),
+	kind: z.enum(APPEAR_KINDS).default('rise'),
+	duration: Val.optional().describe('seconds, default 0.6'),
+	until: Val.optional().describe('leaves at this time (the exit is quicker than the entrance)'),
+});
+export type AppearSpec = z.infer<typeof AppearSpec>;
+
+const Vec3 = z.tuple([Val, Val, Val]);
+/** One thing in a 3D scene. x right, y UP, z toward the viewer; `at` is the centre of its base. */
+export const Obj3D = z.object({
+	shape: z.enum(SHAPES_3D),
+	size: z.union([Val, Vec3]).optional().describe('[width, height, depth], or one number for a cube / sphere diameter'),
+	at: Vec3.optional(),
+	to: Vec3.optional().describe('line: where it ends'),
+	rotate: Vec3.optional().describe('degrees about x, y, z'),
+	color: z.string().max(40).optional(),
+	opacity: Val.optional(),
+	text: z.string().max(60).optional().describe('label: the words'),
+	fontSize: Val.optional(),
+	arrow: z.boolean().optional(),
+	width: Val.optional().describe('line thickness'),
+	appear: AppearSpec.optional(),
+	repeat: z.object({ count: Val }).optional(),
+	show: Val.optional(),
+});
+export type Obj3D = z.infer<typeof Obj3D>;
 
 export interface NodeSpec {
 	type: (typeof NODE_TYPES)[number];
@@ -50,6 +81,9 @@ export interface NodeSpec {
 	text?: string;
 	origin?: [number | string, number | string];
 	anim?: AnimSpec[];
+	appear?: AppearSpec;
+	camera?: { yaw?: number | string; pitch?: number | string; zoom?: number | string };
+	objects?: Obj3D[];
 	repeat?: { count: number | string };
 	show?: number | string;
 	children?: NodeSpec[];
@@ -61,6 +95,9 @@ export const NodeSpec: z.ZodType<NodeSpec> = z.lazy(() =>
 		text: z.string().max(80).optional(),
 		origin: z.tuple([Val, Val]).optional().describe('pivot for rotate/scale, in viewBox units'),
 		anim: z.array(AnimSpec).max(6).optional(),
+		appear: AppearSpec.optional(),
+		camera: z.object({ yaw: Val.optional(), pitch: Val.optional(), zoom: Val.optional() }).optional().describe('scene3d: orbit camera in degrees; zoom is fitted automatically when left out'),
+		objects: z.array(Obj3D).max(60).optional().describe('scene3d: the solids, lines and labels'),
 		repeat: z.object({ count: Val }).optional().describe('draw this node count times; i = 0..count-1, n = count'),
 		show: Val.optional().describe('expression; the node is drawn only when it is non-zero'),
 		children: z.array(NodeSpec).max(60).optional(),
@@ -117,7 +154,12 @@ export function expandedCount(spec: ElementSpec): number {
 					times = Math.floor(typeof c === 'number' ? c : isExpr(c) ? evalExpr(c.slice(1), env0) : isParamRef(c) ? Number(env0[(c as string).slice(1)] ?? 1) : 1);
 				} catch { times = 1; }
 			}
-			return sum + Math.min(80, Math.max(0, times)) * (1 + (n.children ? count(n.children) : 0));
+			const objs = (n.objects ?? []).reduce((k, o) => {
+				let m = 1;
+				if (o.repeat) { try { const c = o.repeat.count; m = Math.floor(typeof c === 'number' ? c : isExpr(c) ? evalExpr(c.slice(1), env0) : isParamRef(c) ? Number(env0[(c as string).slice(1)] ?? 1) : 1); } catch { m = 1; } }
+				return k + Math.min(60, Math.max(0, m));
+			}, 0);
+			return sum + Math.min(80, Math.max(0, times)) * (1 + objs + (n.children ? count(n.children) : 0));
 		}, 0);
 	return count(spec.nodes);
 }
@@ -172,6 +214,29 @@ export function checkSpec(spec: ElementSpec): SpecIssue[] {
 				const fs = Number(n.attrs?.fontSize);
 				if (Number.isFinite(fs) && fs < spec.viewBox[1] * 0.07) issues.push({ level: 'warn', where: `${w}.fontSize`, message: 'text may be too small to read at video size' });
 			}
+			if (n.appear) { animated++; for (const k of ['at', 'duration', 'until'] as const) if (n.appear[k] !== undefined) checkVal(coerceNum(n.appear[k] as number | string), `${w}.appear.${k}`); }
+			if (n.type === 'scene3d') {
+				if (!n.objects?.length) issues.push({ level: 'error', where: w, message: 'a scene3d needs an "objects" list (box, cylinder, sphere, …)' });
+				const usesT = (v: unknown) => typeof v === 'string' && /(^|[^a-zA-Z_])t([^a-zA-Z_0-9]|$)/.test(v.replace(/^=/, ''));
+				for (const k of ['yaw', 'pitch', 'zoom'] as const) { const v = n.camera?.[k]; if (v !== undefined) { checkVal(coerceNum(v), `${w}.camera.${k}`); if (usesT(v)) animated++; } }
+				(n.objects ?? []).forEach((o, oi) => {
+					const ow = `${w}.objects[${oi}]${o.shape}`;
+					const one = (v: unknown, k: string) => { if (v === undefined) return; checkVal(coerceNum(v as number | string), `${ow}.${k}`); if (usesT(v)) animated++; };
+					for (const k of ['at', 'to', 'rotate'] as const) (o[k] ?? []).forEach((v, vi) => one(v, `${k}[${vi}]`));
+					if (Array.isArray(o.size)) o.size.forEach((v, vi) => one(v, `size[${vi}]`)); else one(o.size, 'size');
+					for (const k of ['opacity', 'fontSize', 'width', 'show'] as const) one(o[k], k);
+					if (o.repeat) one(o.repeat.count, 'repeat');
+					if (o.appear) { animated++; for (const k of ['at', 'duration', 'until'] as const) one(o.appear[k], `appear.${k}`); }
+					if (o.color !== undefined) { if (/javascript:|url\(|<|>|&#/i.test(o.color)) issues.push({ level: 'error', where: `${ow}.color`, message: 'unsafe value' }); else if (isParamRef(o.color) && !keys.has(o.color.slice(1))) issues.push({ level: 'error', where: `${ow}.color`, message: `unknown parameter ${o.color}` }); }
+					if (o.shape === 'label') {
+						textCount++;
+						if (!o.text) issues.push({ level: 'error', where: ow, message: 'a label needs "text"' });
+						for (const m of (o.text ?? '').matchAll(/\{\{(.+?)\}\}/g)) { const ex = m[1].trim(); if (ex.startsWith('$')) { if (!keys.has(ex.slice(1))) issues.push({ level: 'error', where: `${ow}.text`, message: `unknown parameter ${ex}` }); } else checkVal(`=${ex}`, `${ow}.text`); }
+					}
+					if (o.shape === 'line' && !o.to) issues.push({ level: 'error', where: ow, message: 'a line needs "to": [x, y, z]' });
+					if (o.shape !== 'line' && o.shape !== 'label' && o.size === undefined) issues.push({ level: 'warn', where: ow, message: 'no size given: it is drawn 40 units big' });
+				});
+			} else if (n.objects || n.camera) issues.push({ level: 'error', where: w, message: '"objects" and "camera" only belong on a node of type "scene3d"' });
 			if (n.origin) n.origin.forEach((v, k) => checkVal(coerceNum(v), `${w}.origin[${k}]`));
 			if (n.show !== undefined) checkVal(coerceNum(n.show), `${w}.show`);
 			if (n.repeat) {

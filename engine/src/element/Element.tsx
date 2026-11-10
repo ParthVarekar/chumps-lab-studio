@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
-import { Easing, random } from 'remotion';
+import { random } from 'remotion';
 import { z } from 'zod';
 import { useStudio } from '../context';
 import type { ComponentProps } from '../components/types';
 import { evalExpr } from './expr';
+import { DUR, appearTransform, easeBy, presence } from './motion';
+import { renderScene3d, type SceneTools } from './scene3d';
 import { ElementSpec, coerceAttr, coerceNum, defaultParams, numericEnv, type AnimSpec, type NodeSpec } from './spec';
 
 export const GeneratedProps = z.object({
@@ -25,17 +27,7 @@ interface Ctx {
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
-const ease = (u: number, kind: AnimSpec['ease'] | undefined): number => {
-	u = clamp01(u);
-	switch (kind) {
-		case 'in': return Easing.in(Easing.cubic)(u);
-		case 'out': return Easing.out(Easing.cubic)(u);
-		case 'inout': return Easing.inOut(Easing.cubic)(u);
-		case 'back': return Easing.back(1.7)(u);
-		case 'spring': return 1 - Math.exp(-7 * u) * Math.cos(10 * u); // starts at 0, overshoots about 10 %, settles at 1
-		default: return u;
-	}
-};
+const ease = easeBy;
 
 /** "M {{100 - r}} 50" or "{{round(value)}}%": {{expression}} is a number, {{$name}} a text parameter. */
 function template(src: string, env: Env, ctx: Ctx): string {
@@ -89,7 +81,7 @@ function animValue(a: AnimSpec, env: Env, ctx: Ctx, key: string): number {
 		case 'ramp':
 		case 'once': {
 			const dur = Math.max(0.05, num(a.duration, env, ctx, 1));
-			return from + (to - from) * ease(tt / dur, a.ease ?? 'out');
+			return from + (to - from) * ease(tt / dur, a.ease ?? 'expo');
 		}
 		case 'flicker': {
 			const rate = Math.max(0.5, num(a.rate, env, ctx, 12));
@@ -109,11 +101,15 @@ function renderNodes(nodes: NodeSpec[], env: Env, ctx: Ctx, path: string): React
 			const e: Env = n.repeat ? { ...env, i, n: times } : env;
 			if (n.show !== undefined && !num(n.show, e, ctx, 1)) continue;
 			const key = `${path}${idx}.${i}`;
+			// A staged entrance: nothing is drawn before its moment, then it eases in (and out again if it has an `until`).
+			const pres = n.appear ? presence(ctx.t, num(n.appear.at, e, ctx, 0), num(n.appear.duration, e, ctx, DUR.long), n.appear.until === undefined ? undefined : num(n.appear.until, e, ctx, 0)) : 1;
+			if (pres <= 0) continue;
+			const ap = n.appear ? appearTransform(n.appear.kind ?? 'rise', pres, Math.min(ctx.center[0], ctx.center[1]) / 100) : null;
 			const attrs: Record<string, number | string> = {};
 			for (const [k, v] of Object.entries(n.attrs ?? {})) attrs[k] = val(coerceAttr(k, v), e, ctx);
 
 			// animation tracks → transform, opacity, draw, animated attributes
-			let tx = 0, ty = 0, rot = 0, sx = 1, sy = 1, op = 1, draw: number | null = null;
+			let tx = 0, ty = 0, rot = 0, sx = 1, sy = 1, op = ap ? ap.opacity : 1, draw: number | null = ap ? ap.draw : null;
 			for (const a of n.anim ?? []) {
 				const v = animValue(a, e, ctx, key);
 				if (a.prop === 'rotate') rot += v;
@@ -138,8 +134,15 @@ function renderNodes(nodes: NodeSpec[], env: Env, ctx: Ctx, path: string): React
 			const oy = n.origin ? num(n.origin[1], e, ctx) : own ? own[1] : ctx.center[1];
 			const moves = tx || ty || rot || sx !== 1 || sy !== 1;
 			const animT = moves ? `translate(${tx} ${ty}) translate(${ox} ${oy}) rotate(${rot}) scale(${sx} ${sy}) translate(${-ox} ${-oy})` : '';
+			// The entrance pivots on the shape itself: its centre, or its bottom edge for "grow" (bars rise from their baseline).
+			let appearT = '';
+			if (ap && (ap.tx || ap.ty || ap.s !== 1 || ap.sy !== 1)) {
+				const px = own ? own[0] : ox;
+				const py = ap.sy !== 1 && n.type === 'rect' ? A('y') + A('height') : own ? own[1] : oy;
+				appearT = `translate(${ap.tx} ${ap.ty}) translate(${px} ${py}) scale(${ap.s} ${ap.s * ap.sy}) translate(${-px} ${-py})`;
+			}
 			const staticT = typeof attrs.transform === 'string' ? attrs.transform : '';
-			const transform = [animT, staticT].filter(Boolean).join(' ') || undefined;
+			const transform = [appearT, animT, staticT].filter(Boolean).join(' ') || undefined;
 			delete attrs.transform;
 
 			const style: React.CSSProperties = {};
@@ -154,6 +157,18 @@ function renderNodes(nodes: NodeSpec[], env: Env, ctx: Ctx, path: string): React
 			void ATTR_NAMES;
 
 			switch (n.type) {
+				case 'scene3d': {
+					const tools: SceneTools = {
+						num: (v, en, d = 0) => num(v, en, ctx, d),
+						color: (v, en) => String(val(v, en, ctx)),
+						text: (src, en) => template(src, en, ctx),
+						ink: ctx.theme.ink, textColor: ctx.theme.text, font: ctx.fonts.display,
+					};
+					const { x: _x, y: _y, width: _w, height: _h, ...rest } = common as Record<string, unknown>;
+					void _x; void _y; void _w; void _h;
+					out.push(<g key={key} {...(rest as object)}>{renderScene3d(n, { ...e, t: ctx.t }, tools, key, [ctx.center[0] * 2, ctx.center[1] * 2])}</g>);
+					break;
+				}
 				case 'group': out.push(<g key={key} {...(common as object)}>{renderNodes(n.children ?? [], e, ctx, `${key}.`)}</g>); break;
 				case 'text': {
 					const txt = template(n.text ?? '', e, ctx);

@@ -34,6 +34,9 @@ const FUNCS: Record<string, (...a: number[]) => number> = {
 	step: (e, x) => (x >= e ? 1 : 0),
 	mod: (a, b) => (b === 0 ? 0 : ((a % b) + b) % b),
 	if: (c, a, b) => (c ? a : b),
+	// eased 0..1 progress: ease((t - start) / seconds). The curve is the house ease-out (fast, then settling).
+	ease: (x) => { const u = Math.min(1, Math.max(0, x)); return u >= 1 ? 1 : 1 - Math.pow(2, -10 * u); },
+	smooth: (x) => { const u = Math.min(1, Math.max(0, x)); return u * u * (3 - 2 * u); },
 };
 export const FUNCTION_NAMES = Object.keys(FUNCS);
 const CONSTS: Record<string, number> = { pi: Math.PI };

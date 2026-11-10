@@ -20,3 +20,11 @@ Markers on the ruler, ripple delete, track mute, more transitions (push, iris, w
 
 ## Next (not started)
 Keyframed effect settings, speed changes / freeze frame, lane lock, marker rename and drag.
+
+## Element engine v2 (10 Nov 2026)
+9. **Motion language, staged entrances and 3D scenes.** openclicky (MIT) has no portable 2D/3D engine (it is a macOS Swift app; its 3D is a paid Tripo cloud client), so its *motion rules* were ported and the rest built here:
+   - `engine/src/element/motion.ts`: its easing tokens (expo / quart / quint out, expo in, expo in-out), duration buckets, exits at 75 %. `ease()` and `smooth()` in formulas.
+   - `appear: {at, kind, duration, until}` on any node (fade, rise, pop, draw, grow, drop, slide-left/right): staggered reveals for explainers.
+   - `scene3d` node (`scene3d.tsx`): box, cylinder, cone, pyramid, sphere, plane, line (arrow), label; orbit camera; flat shading; drawn as SVG, auto-fitted to its viewport, no WebGL or new dependencies.
+   - Five presets: Layer stack (3D), Spinning cube (3D), Bar chart (3D), Client-server-database (3D explainer), Three-step flow (explainer). Tests in `engine/test/element.test.ts`; `app/test/elsheet.mts` draws a contact sheet of any preset/spec over time.
+   - **Not done yet:** the AI designer prompt does not know `scene3d` / `appear` yet (so the AI cannot design 3D or explainers; the presets work from the gallery), no 2D/3D/Explainer mode chips, and the Premiere Pro shortcuts/features pass has not started.

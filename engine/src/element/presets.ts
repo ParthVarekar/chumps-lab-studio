@@ -222,6 +222,125 @@ const raw: { id: string; tags: string[]; spec: unknown }[] = [
 			],
 		},
 	},
+	// ---------------------------------------------------------------- 3D (scene3d) and explainers
+	{
+		id: 'stack-3d',
+		tags: ['3d', 'stack', 'layers', 'layer', 'architecture', 'tiers', 'isometric', 'levels', 'model', 'slabs'],
+		spec: {
+			name: 'Layer stack (3D)', description: 'Slabs drop into a stack one by one while the camera drifts round it.',
+			viewBox: [220, 220],
+			params: [num('layers', 'Layers', 4, 2, 6), num('orbit', 'Orbit (deg/s)', 10, 0, 60), { key: 'label', label: 'Caption', type: 'text', default: '' }],
+			nodes: [
+				{ type: 'circle', attrs: { cx: 110, cy: 110, r: 104, fill: 'black', opacity: 0.45 } },
+				{
+					type: 'scene3d', attrs: { x: 10, y: 8, width: 200, height: 176 }, camera: { yaw: '=35+t*orbit', pitch: 26 },
+					objects: [
+						{ shape: 'box', size: [92, 14, 92], at: [0, '=i*22', 0], color: 'accent', repeat: { count: '=layers' }, show: '=mod(i,2)==0', appear: { at: '=0.15+i*0.18', kind: 'drop' } },
+						{ shape: 'box', size: [92, 14, 92], at: [0, '=i*22', 0], color: 'white', repeat: { count: '=layers' }, show: '=mod(i,2)==1', appear: { at: '=0.15+i*0.18', kind: 'drop' } },
+					],
+				},
+				{ type: 'text', text: '{{$label}}', attrs: { x: 110, y: 206, fontSize: 18, fontFamily: 'body', fontWeight: 800, fill: 'text', textAnchor: 'middle' }, appear: { at: 0.9, kind: 'rise' } },
+			],
+		},
+	},
+	{
+		id: 'cube-3d',
+		tags: ['3d', 'cube', 'box', 'block', 'spin', 'rotate', 'dice', 'package', 'container', 'object'],
+		spec: {
+			name: 'Spinning cube (3D)', description: 'A solid cube turning on its axis, lit from above.',
+			viewBox: [200, 200],
+			params: [num('speed', 'Spin (deg/s)', 50, 0, 240), { key: 'tone', label: 'Colour', type: 'color', default: 'accent' }],
+			nodes: [
+				{ type: 'circle', attrs: { cx: 100, cy: 100, r: 94, fill: 'black', opacity: 0.45 } },
+				{
+					type: 'scene3d', camera: { yaw: 30, pitch: 28 },
+					objects: [
+						{ shape: 'plane', size: [130, 0, 130], at: [0, 0, 0], color: 'muted', opacity: 0.25 },
+						{ shape: 'box', size: 70, at: [0, 8, 0], rotate: [0, '=t*speed', 0], color: '$tone', appear: { at: 0.1, kind: 'pop' } },
+					],
+				},
+			],
+		},
+	},
+	{
+		id: 'bars-3d',
+		tags: ['3d', 'bars', 'bar', 'chart', 'graph', 'compare', 'comparison', 'data', 'stats', 'columns'],
+		spec: {
+			name: 'Bar chart (3D)', description: 'Three solid bars grow from the floor, each with its value above it.',
+			viewBox: [240, 220],
+			params: [num('a', 'Bar 1', 40, 0, 100), num('b', 'Bar 2', 70, 0, 100), num('c', 'Bar 3', 95, 0, 100), { key: 'label', label: 'Caption', type: 'text', default: '' }],
+			nodes: [
+				{ type: 'rect', attrs: { x: 6, y: 6, width: 228, height: 208, rx: 18, fill: 'black', opacity: 0.5 } },
+				{
+					type: 'scene3d', attrs: { x: 10, y: 10, width: 220, height: 176 }, camera: { yaw: '=30+sin(t*35)*7', pitch: 22 },
+					objects: [
+						{ shape: 'plane', size: [190, 0, 80], at: [0, 0, 0], color: 'muted', opacity: 0.3 },
+						{ shape: 'box', size: [36, '=max(2,a)', 36], at: [-56, 0, 0], color: 'white', appear: { at: 0.15, kind: 'grow', duration: 0.8 } },
+						{ shape: 'box', size: [36, '=max(2,b)', 36], at: [0, 0, 0], color: 'accent', appear: { at: 0.3, kind: 'grow', duration: 0.8 } },
+						{ shape: 'box', size: [36, '=max(2,c)', 36], at: [56, 0, 0], color: 'accent2', appear: { at: 0.45, kind: 'grow', duration: 0.8 } },
+						{ shape: 'label', text: '{{round(a)}}', at: [-56, '=a+16', 0], fontSize: 17, appear: { at: 0.9, kind: 'fade' } },
+						{ shape: 'label', text: '{{round(b)}}', at: [0, '=b+16', 0], fontSize: 17, appear: { at: 1.05, kind: 'fade' } },
+						{ shape: 'label', text: '{{round(c)}}', at: [56, '=c+16', 0], fontSize: 17, appear: { at: 1.2, kind: 'fade' } },
+					],
+				},
+				{ type: 'text', text: '{{$label}}', attrs: { x: 120, y: 204, fontSize: 17, fontFamily: 'body', fontWeight: 800, fill: 'text', textAnchor: 'middle' }, appear: { at: 1.2, kind: 'rise' } },
+			],
+		},
+	},
+	{
+		id: 'pipeline-3d',
+		tags: ['3d', 'explainer', 'explain', 'pipeline', 'client', 'server', 'database', 'request', 'network', 'architecture', 'system', 'how', 'works', 'backend', 'api'],
+		spec: {
+			name: 'Client, server, database (3D explainer)', description: 'Three parts appear in order, arrows draw between them and a packet travels the path.',
+			viewBox: [320, 200],
+			params: [{ key: 'one', label: 'First', type: 'text', default: 'Client' }, { key: 'two', label: 'Second', type: 'text', default: 'Server' }, { key: 'three', label: 'Third', type: 'text', default: 'Database' }, num('pace', 'Packet time (s)', 2.4, 0.8, 6, 0.1)],
+			nodes: [
+				{ type: 'rect', attrs: { x: 4, y: 4, width: 312, height: 192, rx: 18, fill: 'black', opacity: 0.5 } },
+				{
+					type: 'scene3d', attrs: { x: 8, y: 8, width: 304, height: 184 }, camera: { yaw: '=18+sin(t*30)*5', pitch: 20 },
+					objects: [
+						{ shape: 'plane', size: [300, 0, 110], at: [0, 0, 0], color: 'muted', opacity: 0.22 },
+						{ shape: 'box', size: [56, 36, 40], at: [-110, 0, 0], color: 'white', appear: { at: 0.1, kind: 'pop' } },
+						{ shape: 'box', size: [46, 74, 46], at: [0, 0, 0], color: 'accent', appear: { at: 0.55, kind: 'pop' } },
+						{ shape: 'cylinder', size: [54, 50, 54], at: [110, 0, 0], color: 'accent2', appear: { at: 1.0, kind: 'pop' } },
+						{ shape: 'line', at: [-78, 20, 0], to: [-28, 20, 0], color: 'text', arrow: true, appear: { at: 0.4, kind: 'draw', duration: 0.4 } },
+						{ shape: 'line', at: [28, 20, 0], to: [78, 20, 0], color: 'text', arrow: true, appear: { at: 0.85, kind: 'draw', duration: 0.4 } },
+						{ shape: 'sphere', size: 13, at: ['=-78+156*mod(max(0,t-1.5)/pace,1)', 30, 26], color: 'white', show: '=t>1.5' },
+						{ shape: 'label', text: '{{$one}}', at: [-110, 56, 0], fontSize: 15, appear: { at: 0.25, kind: 'fade' } },
+						{ shape: 'label', text: '{{$two}}', at: [0, 94, 0], fontSize: 15, appear: { at: 0.7, kind: 'fade' } },
+						{ shape: 'label', text: '{{$three}}', at: [110, 70, 0], fontSize: 15, appear: { at: 1.15, kind: 'fade' } },
+					],
+				},
+			],
+		},
+	},
+	{
+		id: 'flow-steps',
+		tags: ['explainer', 'explain', 'flow', 'steps', 'step', 'process', 'diagram', 'sequence', 'how', 'works', 'stages', 'pipeline', 'compile', 'workflow'],
+		spec: {
+			name: 'Three-step flow (explainer)', description: 'Three labelled steps appear in turn, arrows draw between them, then a dot runs the path.',
+			viewBox: [380, 130],
+			params: [{ key: 'one', label: 'Step 1', type: 'text', default: 'Write' }, { key: 'two', label: 'Step 2', type: 'text', default: 'Compile' }, { key: 'three', label: 'Step 3', type: 'text', default: 'Run' }, num('pace', 'Dot time (s)', 2.2, 0.8, 6, 0.1)],
+			nodes: [
+				{ type: 'rect', attrs: { x: 4, y: 4, width: 372, height: 122, rx: 18, fill: 'black', opacity: 0.5 } },
+				{ type: 'group', appear: { at: 0.1, kind: 'rise' }, children: [
+					{ type: 'rect', attrs: { x: 18, y: 38, width: 92, height: 54, rx: 12, fill: 'white', stroke: 'ink', strokeWidth: 4 } },
+					{ type: 'text', text: '{{$one}}', attrs: { x: 64, y: 66, fontSize: 18, fontFamily: 'display', fill: 'ink', stroke: 'none', textAnchor: 'middle', dominantBaseline: 'middle' } },
+				] },
+				{ type: 'line', attrs: { x1: 116, y1: 65, x2: 138, y2: 65, stroke: 'text', strokeWidth: 5, strokeLinecap: 'round' }, appear: { at: 0.45, kind: 'draw', duration: 0.3 } },
+				{ type: 'group', appear: { at: 0.6, kind: 'rise' }, children: [
+					{ type: 'rect', attrs: { x: 144, y: 38, width: 92, height: 54, rx: 12, fill: 'accent', stroke: 'ink', strokeWidth: 4 } },
+					{ type: 'text', text: '{{$two}}', attrs: { x: 190, y: 66, fontSize: 18, fontFamily: 'display', fill: 'ink', stroke: 'none', textAnchor: 'middle', dominantBaseline: 'middle' } },
+				] },
+				{ type: 'line', attrs: { x1: 242, y1: 65, x2: 264, y2: 65, stroke: 'text', strokeWidth: 5, strokeLinecap: 'round' }, appear: { at: 0.95, kind: 'draw', duration: 0.3 } },
+				{ type: 'group', appear: { at: 1.1, kind: 'rise' }, children: [
+					{ type: 'rect', attrs: { x: 270, y: 38, width: 92, height: 54, rx: 12, fill: 'accent2', stroke: 'ink', strokeWidth: 4 } },
+					{ type: 'text', text: '{{$three}}', attrs: { x: 316, y: 66, fontSize: 18, fontFamily: 'display', fill: 'white', stroke: 'none', textAnchor: 'middle', dominantBaseline: 'middle' } },
+				] },
+				{ type: 'circle', attrs: { cx: 64, cy: 106, r: 6, fill: 'text', stroke: 'ink', strokeWidth: 2 }, show: '=t>1.6', anim: [{ prop: 'translateX', kind: 'loop', from: 0, to: 252, period: '=pace', delay: 1.6, ease: 'inout-expo' }] },
+			],
+		},
+	},
 ];
 
 // Parsed once through the schema, so a typo in a preset fails loudly in tests instead of in a video.
