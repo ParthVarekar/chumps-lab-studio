@@ -111,6 +111,8 @@ The AI never writes code: it writes a typed **Edit Decision Document** that you 
 
 ## Quick start
 
+**Windows:** double-click `startup.bat`. It installs on first run, builds the editor, starts it and opens http://localhost:4173.
+
 ```bash
 npm install
 cd app && npm run web          # editor at http://localhost:4173

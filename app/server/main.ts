@@ -269,6 +269,8 @@ http
 			res.end(readFileSync(file));
 			return;
 		}
+		// The bare address (what startup.bat and a typed URL open) is the editor.
+		if (url.pathname === '/') req.url = `/index.html${url.search}`;
 		// cleanUrls off: serve-handler otherwise redirects /index.html?… to / and drops the query string.
 		handler(req, res, { public: DIST, directoryListing: false, cleanUrls: false });
 	})
