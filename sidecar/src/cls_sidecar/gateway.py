@@ -22,7 +22,10 @@ import httpx
 from cls_sidecar.paths import STUDIO_ROOT
 
 BASE_URL = "https://openrouter.ai/api/v1"
-ULTRA_FREE = "nvidia/nemotron-3-ultra-550b-a55b:free"
+# The planner model (forced tool calls + a reasoning budget). Inkling 2 Small (thinkingmachines/inkling-2-small:free) was tried in its place on
+# 10 Nov 2026 but its free endpoint often answers HTTP 403 "only available on agentic harnesses" to API clients, so planning stays on Nemotron 3 Ultra.
+PLANNER_FREE = "nvidia/nemotron-3-ultra-550b-a55b:free"
+ULTRA_FREE = PLANNER_FREE  # old name, kept so older scripts still import
 SUPER_VL_FREE = "nvidia/nemotron-3.5-super-vl:free"
 LOG_PATH = STUDIO_ROOT / "logs" / "llm-requests.jsonl"
 

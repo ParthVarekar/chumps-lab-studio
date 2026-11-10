@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 import cls_sidecar  # noqa: F401
-from cls_sidecar.gateway import SUPER_VL_FREE, ULTRA_FREE, OpenRouterGateway, image_part
+from cls_sidecar.gateway import SUPER_VL_FREE, PLANNER_FREE, OpenRouterGateway, image_part
 
 # A fallback narration snippet (Linux video, ~10:01) if no transcript is passed.
 FALLBACK_TEXT = (
@@ -92,7 +92,7 @@ def check_ultra(gw: OpenRouterGateway, text: str) -> dict:
         {"role": "user", "content": f"Narration:\n{text}"},
     ]
     args, raw = gw.call_tool_json(
-        ULTRA_FREE, messages, name="submit_beat_plan", schema=strict_schema(BeatPlan),
+        PLANNER_FREE, messages, name="submit_beat_plan", schema=strict_schema(BeatPlan),
         description="Submit the beat plan for this narration.",
         reasoning={"effort": "low"}, max_tokens=6000, temperature=0.6,
     )

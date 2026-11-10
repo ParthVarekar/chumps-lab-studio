@@ -5,7 +5,12 @@ import path from 'node:path';
 import { LIB, ROOT } from './library';
 
 export const FAST_MODEL = 'nvidia/nemotron-3.5-super-vl:free';
-export const BIG_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+// The "thinking" model for hard jobs (the element designer's last try): Inkling 2 Small, as asked. Its FREE endpoint sometimes refuses ordinary API
+// clients (HTTP 403 "only available on agentic harnesses"; seen 2 of 3 times on 10 Nov 2026), so a 403 is remembered and Nemotron 3 Ultra answers instead.
+// Override with CLS_BIG_MODEL. If OpenRouter opens the endpoint up, nothing needs changing.
+export const BIG_MODEL = process.env.CLS_BIG_MODEL || 'thinkingmachines/inkling-2-small:free';
+const BIG_BACKUP = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+const restricted = new Set<string>();
 
 export function apiKey(): string | null {
 	if (process.env.CLS_OPENROUTER_API_KEY) return process.env.CLS_OPENROUTER_API_KEY;
@@ -170,7 +175,11 @@ export async function chatJson(messages: { role: string; content: string }[], o:
 	}
 }
 
+/** Some models (no response_format support) answer ```json { ... } ```: hand back just the JSON. */
+export const unfence = (s: string): string => { const m = /^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/i.exec(s); return m ? m[1] : s; };
+
 async function cloudJson(messages: { role: string; content: string }[], o: ChatOptions): Promise<string> {
+	if (o.model && restricted.has(o.model)) o = { ...o, model: BIG_BACKUP };
 	const key = apiKey();
 	if (!key) throw new Error('no API key (CLS_OPENROUTER_API_KEY in .env)');
 	const ctl = new AbortController();
@@ -190,10 +199,15 @@ async function cloudJson(messages: { role: string; content: string }[], o: ChatO
 			}),
 		});
 		const body = (await r.json()) as { choices?: { message?: { content?: string }; finish_reason?: string }[]; error?: { message?: string } };
+		if (r.status === 403 && /agentic harness/i.test(body.error?.message ?? '') && o.model && o.model !== BIG_BACKUP) {
+			restricted.add(o.model); // closed to this kind of client: don't ask again this session
+			clearTimeout(timer);
+			return cloudJson(messages, { ...o, model: BIG_BACKUP });
+		}
 		if (!r.ok || body.error) throw new Error(body.error?.message ?? `model returned ${r.status}`);
 		const content = body.choices?.[0]?.message?.content;
 		if (!content) throw new Error(`empty answer (${body.choices?.[0]?.finish_reason ?? 'unknown'})`);
-		return content;
+		return unfence(content);
 	} catch (e) {
 		if (e instanceof Error && e.name === 'AbortError') throw new Error('the model took too long');
 		throw e;

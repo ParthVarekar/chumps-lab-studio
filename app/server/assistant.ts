@@ -3,7 +3,7 @@
  *
  * Two routes, both ending in the same Op list:
  *   1. Typed shortcuts, e.g.  zoom 1:04 "Test Condition"   sfx 0:20 whoosh   remove b9v7   (instant, no model, no quota)
- *   2. The fast vision model (nemotron-3.5-super-vl:free) for natural language.
+ *   2. The fast vision model (nemotron-3.5-super-vl:free, then the local model) for natural language.
  *
  * The model never writes seconds, coordinates or JSON edits. It names WHAT (a sticker id, an item id, on-screen text,
  * a spoken word) and WHERE-IN-TIME as an anchor ("the word 'once' near 20 s"). This file turns those into numbers

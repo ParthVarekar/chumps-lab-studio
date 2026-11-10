@@ -15,7 +15,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from cls_sidecar.gateway import ULTRA_FREE, OpenRouterGateway
+from cls_sidecar.gateway import PLANNER_FREE, OpenRouterGateway
 from cls_sidecar.ocr import elements_between
 
 # ----------------------------------------------------------------------------- schemas
@@ -151,12 +151,12 @@ def _ultra_tool(gw: OpenRouterGateway, messages: list[dict], name: str, model_cl
 
     schema = strict_schema(model_cls)
     try:
-        args, raw = gw.call_tool_json(ULTRA_FREE, messages, name=name, schema=schema, description=description,
+        args, raw = gw.call_tool_json(PLANNER_FREE, messages, name=name, schema=schema, description=description,
                                       reasoning={"max_tokens": reasoning_budget}, max_tokens=max_tokens, temperature=0.6)
     except GatewayError as exc:
         if "no tool call" not in str(exc):
             raise
-        args, raw = gw.call_tool_json(ULTRA_FREE, messages, name=name, schema=schema, description=description,
+        args, raw = gw.call_tool_json(PLANNER_FREE, messages, name=name, schema=schema, description=description,
                                       reasoning={"enabled": False}, max_tokens=max_tokens, temperature=0.6)
     return model_cls.model_validate(args), raw
 
