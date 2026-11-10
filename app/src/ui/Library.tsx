@@ -131,6 +131,14 @@ const CaptionsTab: React.FC = () => {
 };
 
 // ------------------------------------------------------------------ elements: gallery + AI designer
+/** What each chip adds in front of the brief. These words also steer which preset the designer shows the model as an example. */
+const KIND_HINT = {
+	auto: '',
+	'2d': 'Keep it a flat 2D graphic. ',
+	'3d': 'Make it a 3D scene (scene3d: solids with an orbiting camera). ',
+	explainer: 'Make it an explainer: the parts appear one after another (appear), each labelled, with arrows that draw between them. ',
+} as const;
+
 const ElementsTab: React.FC = () => {
 	const elements = useStudio((s) => s.elements);
 	const region = useStudio((s) => s.region);
@@ -139,6 +147,7 @@ const ElementsTab: React.FC = () => {
 	const design = useStudio((s) => s.design);
 	const set = useStudio((s) => s.set);
 	const [brief, setBrief] = useState('');
+	const [kind, setKind] = useState<'auto' | '2d' | '3d' | 'explainer'>('auto');
 	const [secs, setSecs] = useState(3.5);
 	const [q, setQ] = useState('');
 	const shown = useMemo(() => elements.filter((e) => !q || `${e.name} ${e.tags.join(' ')}`.toLowerCase().includes(q.toLowerCase())), [elements, q]);
@@ -147,12 +156,15 @@ const ElementsTab: React.FC = () => {
 			<div className="group">Design with AI</div>
 			<div className="designer">
 				<textarea rows={3} value={brief} placeholder="Describe what you need: “a small animated speedometer showing 78% CPU”, “a waving plant”, “a pulsing wifi signal”…" onChange={(e) => setBrief(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void design(brief, secs); }} />
+				<div className="chips" title="Steers the designer: a flat graphic, a 3D scene, or an explainer that reveals its parts one by one">
+					{(['auto', '2d', '3d', 'explainer'] as const).map((k) => <button key={k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>{k === 'auto' ? 'Auto' : k === 'explainer' ? 'Explainer' : k.toUpperCase()}</button>)}
+				</div>
 				<div className="designrow">
 					<button className={region ? 'on' : ''} onClick={() => set({ pick: { kind: 'region' }, status: 'Drag a box where the element should go' })}><Crosshair size={14} /> {region ? `Area set (${Math.round(region.w)}×${Math.round(region.h)}%)` : 'Draw its area'}</button>
 					<span className="chip">starts {time.toFixed(1)} s</span>
 					<label className="inline">for <input type="number" min={1} max={20} step={0.5} value={secs} onChange={(e) => setSecs(Number(e.target.value) || 3)} /> s</label>
 				</div>
-				<button className="primary wide" disabled={!brief.trim() || !!designing} onClick={() => void design(brief, secs)}><Wand2 size={15} /> {designing ? 'Designing…' : 'Design it'}</button>
+				<button className="primary wide" disabled={!brief.trim() || !!designing} onClick={() => void design(`${KIND_HINT[kind]}${brief}`, secs)}><Wand2 size={15} /> {designing ? 'Designing…' : 'Design it'}</button>
 				<p className="note">It reads the colours under your area, the text nearby and what is being said, then gives the element its own settings. You see it as a draft before it is added; refine it in plain words afterwards.</p>
 			</div>
 			<div className="group">Ready-made and saved</div>
