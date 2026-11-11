@@ -18,7 +18,11 @@ export const PRIMARY_MODEL = process.env.CLS_MODEL || 'thinkingmachines/inkling-
 export const FAST_MODEL = process.env.CLS_FAST_MODEL || PRIMARY_MODEL;
 export const BIG_MODEL = process.env.CLS_BIG_MODEL || PRIMARY_MODEL;
 export const BACKUP_MODEL = 'nvidia/nemotron-3.5-super-vl:free';
-export const BACKUP_BIG = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+/** The element designer's own pick, chosen by test (app/test/model-bench.mts, 12 Nov 2026: 9 free models x 3 briefs): dots-3-note-preview was the only one valid
+ *  on all 3 (about 10 s each); Nemotron 3.5 Super VL drew the best pictures but was valid 1 of 3; Nemotron 3 Ultra, Lightning, Nano Omni, North Mini Code and the
+ *  Liquid / Flint models produced no valid element. Override with CLS_ELEMENT_MODEL. */
+export const ELEMENT_MODEL = process.env.CLS_ELEMENT_MODEL || 'dots-studio/dots-3-note-preview:free';
+export const BACKUP_BIG = BACKUP_MODEL; // Nemotron 3 Ultra was the old backup for hard jobs; it failed every element in the benchmark
 /** Models OpenRouter refused (403), and until when we leave them alone. They are tried again after RESTRICTED_FOR_MS. */
 const RESTRICTED_FOR_MS = 60_000; // a refusal costs ~0.1 s, so Inkling gets another chance every minute
 const restricted = new Map<string, number>();

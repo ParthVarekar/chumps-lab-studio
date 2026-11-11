@@ -19,7 +19,7 @@ import { Generated } from '@cls/engine/src/element/Element';
 import { PRESETS } from '@cls/engine/src/element/presets';
 import { ElementSpec, checkSpec, defaultParams, type SpecIssue } from '@cls/engine/src/element/spec';
 import { loadContext, norm, ocrAt } from './context';
-import { BACKUP_BIG, BIG_MODEL, FAST_MODEL, chatJson, lastProvider } from './llm';
+import { BACKUP_MODEL, BIG_MODEL, ELEMENT_MODEL, chatJson, lastProvider } from './llm';
 import { LIB } from './library';
 
 export interface Region { x: number; y: number; w: number; h: number }
@@ -68,7 +68,7 @@ function footageColour(dir: string, t: number, r: Region): { hex: string; light:
 
 const NUMBER_WORDS: Record<string, number> = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100 };
 
-function situation(a: DesignArgs) {
+export function situation(a: DesignArgs) {
 	const ctx = loadContext(a.dir);
 	const lo = a.time - 3;
 	const hi = a.time + a.duration + 2;
@@ -113,6 +113,8 @@ A repeat count draws ONE node several times (bars 0..n-1): never copy-paste the 
 BAR CHARTS: ONE repeat node, count 3. Height of bar i = if(i==0,bar1,if(i==1,bar2,bar3)) (one number param per bar) and y = baseline - that height, so every bar rises from the SAME baseline.
 Animate "attr:height" with a ramp from 0 to that same expression (delay =i*0.12). Do not use min()/max() to pick a bar. Bars must differ in height and stay inside the box.
 
+TEXT PARAMETERS belong ONLY in text nodes, written {{$key}}. They can NEVER appear inside a formula (no if(i==0,$label1,...)): for one label per part, write one label node per part, each with its own text param.
+
 NO DEBUG TEXT: never print a setting's own value or name on the graphic ("3 parts", "speed 1.2"). Text is only for words the viewer should read: a caption the request asked for, a number the video is about (78%), a label.
 LAYERING: draw back to front. Put a text label in its OWN node, never inside a group that rotates, scales or flickers, unless the text itself is meant to move
 (a spinning ring with "Loading..." beside it is two nodes: the spinner, and a still text). Text params are written as "{{$key}}" in a text node.
@@ -140,7 +142,7 @@ const rank = (brief: string) => {
 	return PRESETS.map((p) => ({ p, score: p.tags.filter((t) => words.has(t)).length + (words.has(norm(p.name)) ? 3 : 0) })).sort((a, b) => b.score - a.score);
 };
 
-function messagesFor(a: DesignArgs, sit: ReturnType<typeof situation>): { role: string; content: string }[] {
+export function messagesFor(a: DesignArgs, sit: ReturnType<typeof situation>): { role: string; content: string }[] {
 	const ranked = rank(`${a.brief} ${a.instruction ?? ''}`);
 	const shots = [...ranked.slice(0, 2).map((r) => r.p), ...PRESETS.filter((p) => p.id === 'speedometer')].filter((p, i, arr) => arr.indexOf(p) === i).slice(0, 3);
 	const r = a.region;
@@ -214,7 +216,7 @@ function gotValue(root: unknown, p: PropertyKey[]): string {
 	return ` (you wrote ${s.slice(0, 60)})`;
 }
 
-function verify(json: unknown): { spec?: ElementSpec; issues: SpecIssue[] } {
+export function verify(json: unknown): { spec?: ElementSpec; issues: SpecIssue[] } {
 	if (!json || typeof json !== 'object') return { issues: [{ level: 'error', where: 'spec', message: 'the answer has no "spec" object' }] };
 	const parsed = ElementSpec.safeParse(json);
 	if (!parsed.success) return { issues: parsed.error.issues.slice(0, 6).map((i) => ({ level: 'error' as const, where: i.path.join('.'), message: `${i.message}${gotValue(json, i.path)}` })) };
@@ -235,7 +237,8 @@ export async function designElement(a: DesignArgs): Promise<DesignResult> {
 		let content: string;
 		try {
 			// The first try uses the fast model; if it keeps failing the checks, the big model gets one go.
-			content = await chatJson(messages, { schemaName: 'element', schema: {}, mode: 'json', model: attempt === 3 ? BIG_MODEL : FAST_MODEL, backup: attempt === 3 ? BACKUP_BIG : undefined, maxTokens: 6000, temperature: 0.35, reasoning: attempt === 3 ? { effort: 'low' } : { enabled: false }, timeoutMs: attempt === 3 ? 240000 : 90000 });
+			// Attempt 1 is the model that tested best; the repair try goes to a DIFFERENT model, which reads the error report fresh; the last try is the "thinking" model.
+			content = await chatJson(messages, { schemaName: 'element', schema: {}, mode: 'json', model: attempt === 1 ? ELEMENT_MODEL : attempt === 2 ? BACKUP_MODEL : BIG_MODEL, maxTokens: 6000, temperature: 0.35, reasoning: attempt === 3 ? { effort: 'low' } : { enabled: false }, timeoutMs: attempt === 3 ? 240000 : 90000 });
 		} catch (e) {
 			return { ok: false, say: `The AI model didn't answer (${e instanceof Error ? e.message.slice(0, 160) : 'error'}). Try again in a moment, or start from a preset in the gallery.`, issues, ms: Date.now() - t0, attempts: attempt };
 		}
